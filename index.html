@@ -166,7 +166,7 @@ async function registerUser(event,type){event.preventDefault();const form=event.
 async function renderAdmin(){
  const box=document.getElementById('adminData');box.textContent='جارٍ تحميل التسجيلات والمحلات...';
  try{
-  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('drivers?select=*&order=created_at.desc'),sbRequest('shops?select=id,name,address,is_active&order=name.asc')]);
+  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('drivers?select=*&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active&order=shop_name.asc')]);
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
   html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
   html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.name)+'</b><br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'نشط':'بانتظار المراجعة / غير نشط')+(x.is_active?'':'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>')+'</div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
@@ -183,7 +183,7 @@ async function registerShop(event){
  if(!name||!address){box.textContent='اكتب اسم المحل والعنوان.';return;}
  box.textContent='جارٍ إرسال طلب التسجيل للمراجعة...';
  try{
-  await sbRequest('shops','POST',{name,address,is_active:false});
+  await sbRequest('shops','POST',{shop_name:name,address,is_registered:false,is_active:false});
   document.getElementById('merchantForm').reset();
   box.textContent='تم إرسال طلب تسجيل المحل إلى قاعدة البيانات، وسيظهر للعملاء بعد اعتماد الإدارة.';
  }catch(e){box.textContent='لم يتم إرسال الطلب إلى قاعدة البيانات: '+(e.message||'تعذر الاتصال')+'. لم نعرضه كتسجيل ناجح.';}
@@ -256,7 +256,7 @@ async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
  try{
-  const shops=await sbRequest('shops?select=id,name,address&is_active=eq.true&order=name.asc');
+  const shops=await sbRequest('shops?select=id,name:shop_name,address&is_active=eq.true&order=shop_name.asc');
   customerCatalog=[];
   for(const shop of shops){
    const products=await sbRequest('products?select=id,name,price,description&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
