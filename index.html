@@ -74,7 +74,8 @@ function showMyOrders(){
 }
 
 </script>
-<meta name="theme-color" content="#123c63"><meta name="mobile-web-app-capable" content="yes"></head>
+<meta name="theme-color" content="#123c63"><meta name="mobile-web-app-capable" content="yes"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
 <body>
 <main class="app">
 <section id="home" class="screen active">
@@ -148,7 +149,23 @@ function showMyOrders(){
 </form>
 </section>
 <section id="admin" class="screen">
-<div class="notice"><button class="back" onclick="go('home')">رجوع</button><h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>إعداد اتصال قاعدة البيانات ومتابعة التسجيلات والطلبات.</p>
+<div id="adminLogin" class="notice">
+<button class="back" onclick="go('home')">رجوع</button>
+<h2>دخول إدارة سفينة نوح</h2><p class="small">الدخول مخصص لحساب الإدارة المعتمد فقط.</p>
+<form class="form" onsubmit="adminSignIn(event)">
+<label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" value="anoh066@gmail.com" autocomplete="username" required>
+<label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" required>
+<button class="action" type="submit">تسجيل الدخول</button><div id="adminLoginStatus" class="small" aria-live="polite"></div>
+</form>
+<button class="action secondary" type="button" onclick="requestAdminPasswordReset()">نسيت كلمة المرور؟ إرسال رابط استعادة</button>
+<div id="adminResetPanel" style="display:none;margin-top:16px"><h3>تعيين كلمة مرور جديدة</h3>
+<form class="form" onsubmit="saveAdminNewPassword(event)">
+<label for="adminNewPassword">كلمة المرور الجديدة</label><input id="adminNewPassword" type="password" minlength="8" autocomplete="new-password" required>
+<label for="adminNewPasswordConfirm">تأكيد كلمة المرور</label><input id="adminNewPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required>
+<button class="action" type="submit">حفظ كلمة المرور الجديدة</button><div id="adminResetStatus" class="small" aria-live="polite"></div>
+</form></div></div>
+<div id="adminWorkspace" style="display:none">
+<div class="notice"><button class="back" onclick="go('home')">رجوع</button><button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>إعداد اتصال قاعدة البيانات ومتابعة التسجيلات والطلبات.</p>
 <div class="form" style="padding:0">
 <label>رابط مشروع Supabase</label><input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="url">
 <label>المفتاح العام Publishable</label><input id="sbKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
@@ -159,16 +176,38 @@ function showMyOrders(){
 <button class="action secondary" onclick="renderAdmin()">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" onclick="renderOrders()">عرض الطلبات</button>
 <div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُستخدم التسعيرة المحفوظة سابقًا على هذا الجهاز إن وُجدت. لا نضع أسعارًا افتراضية بدل قائمتك.</p><label for="tariffBase">السعر الأساسي (جنيه)</label><input id="tariffBase" type="number" min="0" step="0.5" placeholder="السعر الأساسي"><label for="tariffKm">سعر الكيلومتر (جنيه)</label><input id="tariffKm" type="number" min="0" step="0.5" placeholder="سعر الكيلومتر"><label for="tariffExtra">رسوم إضافية (جنيه)</label><input id="tariffExtra" type="number" min="0" step="0.5" placeholder="أي رسوم إضافية"><button class="action" type="button" onclick="saveCustomerTariff()">حفظ التسعيرة</button><div id="tariffStatus" class="small"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
+</div>
 </section>
 </main>
 <script>
-function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='customer'){loadCustomerCatalog();renderCustomerCart();}window.scrollTo(0,0)}
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='customer'){loadCustomerCatalog();renderCustomerCart();}if(id==='admin')showAdminAccess();window.scrollTo(0,0)}
+let sbClient=null,adminSession=null,adminRecoveryMode=false;
+function initSupabaseAuth(){
+ const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
+ if(!sbClient){sbClient=window.supabase.createClient(c.url,c.key,{auth:{flowType:'implicit',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+ sbClient.auth.onAuthStateChange((event,session)=>{adminSession=session||null;if(event==='PASSWORD_RECOVERY'){adminRecoveryMode=true;showAdminRecoveryPanel();}if(event==='SIGNED_OUT'){adminSession=null;const w=document.getElementById('adminWorkspace');if(w)w.style.display='none';}});}
+ return true;
+}
+function showAdminRecoveryPanel(){const p=document.getElementById('adminResetPanel'),l=document.getElementById('adminLoginStatus');if(p)p.style.display='block';if(l)l.textContent='تم التحقق من رابط الاستعادة. اكتب كلمة المرور الجديدة.';}
+async function verifyAdminSession(){
+ if(!initSupabaseAuth())throw new Error('إعدادات Supabase غير محفوظة على هذا الهاتف. أدخل الرابط والمفتاح العام أولاً.');
+ const {data:{session},error:se}=await sbClient.auth.getSession();if(se)throw se;adminSession=session;if(!session)return false;
+ const {data:{user},error}=await sbClient.auth.getUser();if(error)throw error;
+ if(!user||!user.app_metadata||user.app_metadata.role!=='admin'){await sbClient.auth.signOut();adminSession=null;throw new Error('هذا الحساب ليس لديه صلاحية إدارة التطبيق.');}
+ return true;
+}
+async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';try{const ok=await verifyAdminSession();if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';}else if(adminRecoveryMode)showAdminRecoveryPanel();}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';}}
+async function requireAdminSession(){if(!await verifyAdminSession())throw new Error('سجّل دخول الإدارة أولاً.');}
+async function adminSignIn(event){event.preventDefault();const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;box.textContent='جارٍ التحقق من بيانات الدخول...';try{const {data,error}=await sbClient.auth.signInWithPassword({email,password});if(error)throw error;adminSession=data.session;if(!await verifyAdminSession())throw new Error('لم يتم إنشاء جلسة دخول.');document.getElementById('adminLogin').style.display='none';document.getElementById('adminWorkspace').style.display='block';box.textContent='';}catch(e){box.textContent=e.message||'فشل تسجيل الدخول.';}}
+async function requestAdminPasswordReset(){const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim();if(!email){box.textContent='اكتب البريد الإلكتروني أولاً.';return;}box.textContent='جارٍ إرسال رابط الاستعادة...';try{const {error}=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});if(error)throw error;box.textContent='تم طلب إرسال رابط الاستعادة. افتح الرسالة على هذا الهاتف.';}catch(e){box.textContent=e.message||'تعذر إرسال رابط الاستعادة.';}}
+async function saveAdminNewPassword(event){event.preventDefault();const box=document.getElementById('adminResetStatus'),p=document.getElementById('adminNewPassword').value,q=document.getElementById('adminNewPasswordConfirm').value;if(p.length<8){box.textContent='كلمة المرور يجب ألا تقل عن 8 أحرف.';return;}if(p!==q){box.textContent='كلمتا المرور غير متطابقتين.';return;}if(!initSupabaseAuth()){box.textContent='تعذر الاتصال بإعدادات Supabase.';return;}box.textContent='جارٍ حفظ كلمة المرور الجديدة...';try{const {data:{session},error:se}=await sbClient.auth.getSession();if(se)throw se;if(!session)throw new Error('رابط الاستعادة غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً.');const {error}=await sbClient.auth.updateUser({password:p});if(error)throw error;adminRecoveryMode=false;box.textContent='تم تغيير كلمة المرور. يمكنك الآن تسجيل الدخول.';await sbClient.auth.signOut();document.getElementById('adminResetPanel').style.display='none';document.getElementById('adminLogin').style.display='block';document.getElementById('adminWorkspace').style.display='none';}catch(e){box.textContent=e.message||'تعذر تغيير كلمة المرور.';}}
+async function adminLogout(){if(sbClient)await sbClient.auth.signOut();adminSession=null;const l=document.getElementById('adminLogin'),w=document.getElementById('adminWorkspace');if(l)l.style.display='block';if(w)w.style.display='none';}
 
 // ربط التطبيق بقاعدة بيانات Supabase مع الاحتفاظ بنسخة محلية احتياطية.
 function getRegistrations(){try{return JSON.parse(localStorage.getItem('safinet_registrations')||'[]')}catch(e){return []}}
 function getSB(){return {url:(localStorage.getItem('safinet_sb_url')||'').replace(/\/$/,''),key:localStorage.getItem('safinet_sb_key')||''}}
-function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
-async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+c.key,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
+function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);sbClient=null;initSupabaseAuth();document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
+async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');const token=adminSession&&adminSession.access_token?adminSession.access_token:c.key;const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
 async function testSupabase(){const box=document.getElementById('connectionStatus');box.textContent='جارٍ اختبار الاتصال...';try{await sbRequest('customers?select=id&limit=1');box.textContent='الاتصال بقاعدة البيانات ناجح.'}catch(e){box.textContent='فشل الاختبار: '+e.message}}
 function toggleRiderVehicleFields(){const motorcycle=document.getElementById('riderVehicle').value==='motorcycle';document.getElementById('motorcycleFields').style.display=motorcycle?'block':'none';document.getElementById('riderVehicleDetails').required=motorcycle;document.getElementById('riderPlate').required=motorcycle}
 async function registerUser(event,type){
@@ -190,6 +229,7 @@ async function registerUser(event,type){
  }catch(e){box.textContent='لم يتم إرسال التسجيل: '+(e.message||'تعذر الاتصال بقاعدة البيانات')+'. لم يتم تسجيله كطلب ناجح.'}
 }
 async function renderAdmin(){
+ await requireAdminSession();
  const box=document.getElementById('adminData');box.textContent='جارٍ تحميل التسجيلات والمحلات...';
  try{
   const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active&order=shop_name.asc')]);
@@ -199,7 +239,7 @@ async function renderAdmin(){
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+e.message}
 }
-async function approveShop(id){if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true});alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
+async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true});alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
 async function renderOrders(){const box=document.getElementById('adminData');box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);let cloud=[];let cloudError='';try{cloud=await sbRequest('orders?select=*&order=created_at.desc')}catch(e){cloudError=e.message||'تعذر الاتصال'}let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية أو لم يتم الربط.</p>');if(cloudError)html+='<p>ملاحظة الاتصال: '+escapeText(cloudError)+'</p>';box.innerHTML=html}
 async function registerShop(event){
  event.preventDefault();
@@ -218,7 +258,7 @@ async function registerShop(event){
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function clearRegistrations(){if(confirm('هل تريد مسح النسخة المحلية الاحتياطية؟ لن يتم حذف بيانات قاعدة البيانات.')){localStorage.removeItem('safinet_registrations');renderAdmin()}}
-window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('sbUrl'))document.getElementById('sbUrl').value=c.url;if(document.getElementById('sbKey'))document.getElementById('sbKey').value=c.key;});
+window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('sbUrl'))document.getElementById('sbUrl').value=c.url;if(document.getElementById('sbKey'))document.getElementById('sbKey').value=c.key;initSupabaseAuth();const hp=new URLSearchParams(window.location.hash.replace(/^#/,'&'));if(hp.get('type')==='recovery'){adminRecoveryMode=true;showAdminRecoveryPanel();}if(document.getElementById('admin').classList.contains('active'))showAdminAccess();});
 
 
 let deliveryMap, routeLayer, pickupMarker, dropMarker;
@@ -352,7 +392,8 @@ async function confirmCustomerOrder(){
  }
 }
 function showMyOrders(){const box=document.getElementById('myOrders');if(!box)return;const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');box.innerHTML=rows.length?rows.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب')+'</b><br>المحل: '+escapeText(x.shopName||x.shop_name||'—')+'<br>الإجمالي: '+Number(x.total||0).toFixed(2)+' جنيه<br>الحالة: '+escapeText(x.order_status||x.status||'جديد')+'</div>').join(''):'لا توجد طلبات محفوظة على هذا الهاتف.';}
-function renderOrders(){
+async function renderOrders(){
+ await requireAdminSession();
  const box=document.getElementById('adminData');box.textContent='جارٍ تحميل الطلبات...';
  sbRequest('orders?select=id,customer_name,customer_phone,delivery_address,order_details,status,created_at&order=created_at.desc').then(rows=>{
   box.innerHTML=rows.map(x=>{let d={};try{d=JSON.parse(x.order_details||'{}')}catch(e){}return '<div class="record"><b>طلب #'+escapeText(x.id)+'</b><br>العميل: '+escapeText(x.customer_name)+' — '+escapeText(x.customer_phone)+'<br>المحل: '+escapeText(d.shopName||'—')+'<br>التسليم: '+escapeText(x.delivery_address)+'<br>المسافة: '+(Number(d.distanceKm)||0).toFixed(2)+' كم<br>الشحن: '+(Number(d.delivery)||0).toFixed(2)+' جنيه<br>الإجمالي: '+(Number(d.total)||0).toFixed(2)+' جنيه<br>الدفع: '+(d.payment==='vodafone'?'فودافون كاش':'نقدي عند الاستلام')+'<br>الحالة: '+escapeText(x.status||'جديد')+'</div>';}).join('')||'لا توجد طلبات بعد.';
