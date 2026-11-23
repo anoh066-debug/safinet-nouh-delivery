@@ -124,10 +124,16 @@ function showMyOrders(){
 <section id="driver" class="screen">
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><h2>تسجيل مندوب التوصيل</h2><p>نسجل بيانات المندوب ووسيلة التوصيل، ثم تراجع الإدارة الحساب قبل تفعيل استقبال الطلبات.</p></div>
 <form class="form" id="driverForm" onsubmit="registerUser(event,'driver')">
-<input required placeholder="الاسم بالكامل"><input required inputmode="tel" placeholder="رقم الهاتف">
-<select><option>وسيلة التوصيل</option><option>عجلة</option><option>موتوسيكل</option><option>مندوب شحن</option></select>
-<input placeholder="المنطقة داخل مدينة السادات">
+<label>الاسم بالكامل</label><input id="riderName" required maxlength="120" placeholder="الاسم بالكامل">
+<label>رقم الهاتف</label><input id="riderPhone" required inputmode="tel" pattern="01[0-9]{9}" maxlength="11" placeholder="01xxxxxxxxx">
+<label>وسيلة التوصيل</label><select id="riderVehicle" required onchange="toggleRiderVehicleFields()"><option value="">اختر وسيلة التوصيل</option><option value="bicycle">عجلة</option><option value="motorcycle">موتوسيكل</option></select>
+<div id="motorcycleFields" style="display:none">
+<label>نوع الموتوسيكل وموديله</label><input id="riderVehicleDetails" maxlength="120" placeholder="مثال: هوجن 150">
+<label>رقم اللوحة</label><input id="riderPlate" maxlength="30" placeholder="رقم اللوحة">
+</div>
+<label>المنطقة داخل مدينة السادات</label><input id="riderAddress" maxlength="300" placeholder="المنطقة والعنوان">
 <button class="action" type="submit">تسجيل المندوب</button>
+<div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
 </section>
 <section id="merchant" class="screen">
@@ -162,13 +168,31 @@ function getSB(){return {url:(localStorage.getItem('safinet_sb_url')||'').replac
 function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
 async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+c.key,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
 async function testSupabase(){const box=document.getElementById('connectionStatus');box.textContent='جارٍ اختبار الاتصال...';try{await sbRequest('customers?select=id&limit=1');box.textContent='الاتصال بقاعدة البيانات ناجح.'}catch(e){box.textContent='فشل الاختبار: '+e.message}}
-async function registerUser(event,type){event.preventDefault();const form=event.currentTarget;const fields=[...form.querySelectorAll('input,select')];const values=fields.map(x=>x.value.trim());if(fields.some(x=>x.required&&!x.value.trim())){alert('من فضلك أكمل البيانات المطلوبة');return}const entry=type==='customer'?{full_name:values[0],phone:values[1],address:values[2]}:{full_name:values[0],phone:values[1]};try{await sbRequest(type==='customer'?'customers':'drivers','POST',entry);const local={type:type==='customer'?'عميل':'مندوب',name:values[0],phone:values[1],address:type==='customer'?values[2]:(values[3]||''),vehicle:type==='driver'?(values[2]||''):'',createdAt:new Date().toLocaleString('ar-EG')};const all=getRegistrations();all.push(local);localStorage.setItem('safinet_registrations',JSON.stringify(all));form.reset();alert('تم إرسال التسجيل وحفظه في قاعدة البيانات بنجاح.');go('home')}catch(e){alert('لم يتم إرسال التسجيل إلى قاعدة البيانات: '+e.message+'\nلم نحفظه كتسجيل ناجح.') }}
+function toggleRiderVehicleFields(){const motorcycle=document.getElementById('riderVehicle').value==='motorcycle';document.getElementById('motorcycleFields').style.display=motorcycle?'block':'none';document.getElementById('riderVehicleDetails').required=motorcycle;document.getElementById('riderPlate').required=motorcycle}
+async function registerUser(event,type){
+ event.preventDefault();
+ const form=event.currentTarget;
+ const box=document.getElementById('riderStatus');
+ const fullName=document.getElementById('riderName').value.trim();
+ const phone=document.getElementById('riderPhone').value.trim();
+ const vehicle=document.getElementById('riderVehicle').value;
+ const address=document.getElementById('riderAddress').value.trim();
+ const details=document.getElementById('riderVehicleDetails').value.trim();
+ const plate=document.getElementById('riderPlate').value.trim();
+ if(!fullName||!/^01[0-9]{9}$/.test(phone)||!vehicle||(vehicle==='motorcycle'&&(!details||!plate))){box.textContent='راجع الاسم ورقم الهاتف وبيانات وسيلة التوصيل.';return}
+ box.textContent='جارٍ إرسال طلب تسجيل المندوب...';
+ try{
+  await sbRequest('rpc/register_rider','POST',{p_full_name:fullName,p_phone:phone,p_address:address,p_vehicle_type:vehicle,p_vehicle_details:details||null,p_plate_number:plate||null});
+  form.reset();toggleRiderVehicleFields();
+  box.textContent='تم إرسال طلبك بنجاح إلى الإدارة. حسابك قيد المراجعة ولن تستقبل طلبات قبل الاعتماد.';
+ }catch(e){box.textContent='لم يتم إرسال التسجيل: '+(e.message||'تعذر الاتصال بقاعدة البيانات')+'. لم يتم تسجيله كطلب ناجح.'}
+}
 async function renderAdmin(){
  const box=document.getElementById('adminData');box.textContent='جارٍ تحميل التسجيلات والمحلات...';
  try{
-  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('drivers?select=*&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active&order=shop_name.asc')]);
+  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active&order=shop_name.asc')]);
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
-  html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
+  html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
   html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.name)+'</b><br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'نشط':'بانتظار المراجعة / غير نشط')+(x.is_active?'':'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>')+'</div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+e.message}
