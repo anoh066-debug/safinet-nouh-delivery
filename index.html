@@ -140,7 +140,9 @@ function showMyOrders(){
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><h2>تسجيل محل جديد</h2><p>سجّل بيانات المحل داخل مدينة السادات. سيظل المحل غير معتمد حتى تراجعه الإدارة.</p></div>
 <form class="form" id="merchantForm" onsubmit="registerShop(event)">
 <label for="merchantName">اسم المحل</label><input id="merchantName" required maxlength="120" placeholder="اسم المحل">
-<label for="merchantAddress">عنوان المحل داخل مدينة السادات</label><input id="merchantAddress" required maxlength="240" placeholder="المنطقة والشارع">
+<label for="merchantPhone">رقم هاتف المحل</label><input id="merchantPhone" required inputmode="tel" pattern="01[0-9]{9}" maxlength="11" placeholder="01xxxxxxxxx">
+<label for="merchantType">نشاط المحل</label><select id="merchantType" required><option value="">اختر النشاط</option><option>سوبر ماركت وبقالة</option><option>مطعم</option><option>مخبز</option><option>صيدلية</option><option>خضار وفاكهة</option><option>أدوات منزلية</option><option>أخرى</option></select>
+<label for="merchantAddress">عنوان المحل داخل مدينة السادات</label><input id="merchantAddress" required maxlength="300" placeholder="المنطقة والشارع">
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
 </form>
@@ -202,15 +204,17 @@ async function renderOrders(){const box=document.getElementById('adminData');box
 async function registerShop(event){
  event.preventDefault();
  const name=document.getElementById('merchantName').value.trim();
+ const phone=document.getElementById('merchantPhone').value.trim();
+ const activity=document.getElementById('merchantType').value;
  const address=document.getElementById('merchantAddress').value.trim();
  const box=document.getElementById('merchantStatus');
- if(!name||!address){box.textContent='اكتب اسم المحل والعنوان.';return;}
+ if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address){box.textContent='أكمل اسم المحل ورقم الهاتف والنشاط والعنوان بشكل صحيح.';return;}
  box.textContent='جارٍ إرسال طلب التسجيل للمراجعة...';
  try{
-  await sbRequest('shops','POST',{shop_name:name,address,is_registered:false,is_active:false});
+  await sbRequest('rpc/register_shop','POST',{p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address});
   document.getElementById('merchantForm').reset();
-  box.textContent='تم إرسال طلب تسجيل المحل إلى قاعدة البيانات، وسيظهر للعملاء بعد اعتماد الإدارة.';
- }catch(e){box.textContent='لم يتم إرسال الطلب إلى قاعدة البيانات: '+(e.message||'تعذر الاتصال')+'. لم نعرضه كتسجيل ناجح.';}
+  box.textContent='تم إرسال طلب تسجيل المحل إلى قاعدة البيانات. سيظل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+ }catch(e){box.textContent='لم يتم إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم نعرضه كتسجيل ناجح.';}
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function clearRegistrations(){if(confirm('هل تريد مسح النسخة المحلية الاحتياطية؟ لن يتم حذف بيانات قاعدة البيانات.')){localStorage.removeItem('safinet_registrations');renderAdmin()}}
