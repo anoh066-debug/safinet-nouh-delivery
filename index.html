@@ -329,13 +329,23 @@ function previewCustomerInvoice(){
 }
 async function confirmCustomerOrder(){
  if(!customerInvoice){alert('راجع الفاتورة أولاً قبل تأكيد الشراء.');return;}
- const inv=customerInvoice;const payload={...inv,createdAt:new Date().toISOString(),paymentPhone:inv.payment==='vodafone'?'01094881059':null};
- const order={customer_name:inv.name,customer_phone:inv.phone,delivery_address:inv.address,order_details:JSON.stringify(payload),status:'جديد'};
- const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');rows.unshift({...payload,local_order_no:'SN-'+Date.now(),order_status:'جديد'});localStorage.setItem('safinet_orders',JSON.stringify(rows));
- const feedback=document.getElementById('orderFeedback');feedback.textContent='جارٍ إرسال الطلب...';
- try{await sbRequest('orders','POST',order);feedback.textContent='تم إرسال الطلب إلى قاعدة البيانات بنجاح. رقم الطلب: '+rows[0].local_order_no;}
- catch(e){feedback.textContent='تم حفظ الطلب على هذا الهاتف فقط، ولم يتأكد وصوله للمندوبين. يلزم ضبط اتصال قاعدة البيانات وصلاحية إضافة الطلبات. '+(e.message||'');}
- customerCart=[];localStorage.removeItem('safinet_customer_cart');renderCustomerCart();customerInvoice=null;document.getElementById('invoicePreview').style.display='none';
+ const inv=customerInvoice;
+ const payload={...inv,createdAt:new Date().toISOString(),paymentPhone:inv.payment==='vodafone'?'01094881059':null};
+ const localNo='SN-'+Date.now();
+ const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');
+ const localRow={...payload,local_order_no:localNo,order_status:'جديد'};
+ const feedback=document.getElementById('orderFeedback');
+ feedback.textContent='جارٍ إرسال الطلب إلى قاعدة البيانات...';
+ try{
+  const result=await sbRequest('rpc/submit_customer_order','POST',{p_customer_name:inv.name,p_customer_phone:inv.phone,p_delivery_address:inv.address,p_shop_name:inv.shopName,p_order_details:JSON.stringify(payload),p_total_amount:inv.total});
+  rows.unshift({...localRow,cloud_order_id:result});
+  localStorage.setItem('safinet_orders',JSON.stringify(rows));
+  feedback.textContent='تم إرسال الطلب إلى قاعدة البيانات بنجاح. رقم الطلب: '+String(result);
+  customerCart=[];localStorage.removeItem('safinet_customer_cart');renderCustomerCart();customerInvoice=null;document.getElementById('invoicePreview').style.display='none';
+ }catch(e){
+  rows.unshift(localRow);localStorage.setItem('safinet_orders',JSON.stringify(rows));
+  feedback.textContent='لم يصل الطلب إلى قاعدة البيانات؛ تم حفظ نسخة على هذا الهاتف فقط. '+(e.message||'تعذر الاتصال');
+ }
 }
 function showMyOrders(){const box=document.getElementById('myOrders');if(!box)return;const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');box.innerHTML=rows.length?rows.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب')+'</b><br>المحل: '+escapeText(x.shopName||x.shop_name||'—')+'<br>الإجمالي: '+Number(x.total||0).toFixed(2)+' جنيه<br>الحالة: '+escapeText(x.order_status||x.status||'جديد')+'</div>').join(''):'لا توجد طلبات محفوظة على هذا الهاتف.';}
 function renderOrders(){
