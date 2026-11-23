@@ -152,6 +152,13 @@ function showMyOrders(){
 <div id="adminLogin" class="notice">
 <button class="back" onclick="go('home')">رجوع</button>
 <h2>دخول إدارة سفينة نوح</h2><p class="small">الدخول مخصص لحساب الإدارة المعتمد فقط.</p>
+<div class="form" style="padding:0">
+<label for="sbUrl">رابط مشروع Supabase</label><input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="url">
+<label for="sbKey">المفتاح العام Publishable</label><input id="sbKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
+<button class="action" type="button" onclick="saveSupabaseConfig()">حفظ إعدادات قاعدة البيانات على هذا الهاتف</button>
+<button class="action secondary" type="button" onclick="testSupabase()">اختبار الاتصال</button>
+<div id="connectionStatus" class="small" aria-live="polite"></div>
+</div>
 <form class="form" onsubmit="adminSignIn(event)">
 <label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" value="anoh066@gmail.com" autocomplete="username" required>
 <label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" required>
@@ -166,13 +173,6 @@ function showMyOrders(){
 </form></div></div>
 <div id="adminWorkspace" style="display:none">
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>إعداد اتصال قاعدة البيانات ومتابعة التسجيلات والطلبات.</p>
-<div class="form" style="padding:0">
-<label>رابط مشروع Supabase</label><input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="url">
-<label>المفتاح العام Publishable</label><input id="sbKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
-<button class="action" type="button" onclick="saveSupabaseConfig()">حفظ إعدادات قاعدة البيانات على هذا الهاتف</button>
-<button class="action secondary" type="button" onclick="testSupabase()">اختبار الاتصال</button>
-<div id="connectionStatus" class="small" aria-live="polite"></div>
-</div>
 <button class="action secondary" onclick="renderAdmin()">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" onclick="renderOrders()">عرض الطلبات</button>
 <div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُستخدم التسعيرة المحفوظة سابقًا على هذا الجهاز إن وُجدت. لا نضع أسعارًا افتراضية بدل قائمتك.</p><label for="tariffBase">السعر الأساسي (جنيه)</label><input id="tariffBase" type="number" min="0" step="0.5" placeholder="السعر الأساسي"><label for="tariffKm">سعر الكيلومتر (جنيه)</label><input id="tariffKm" type="number" min="0" step="0.5" placeholder="سعر الكيلومتر"><label for="tariffExtra">رسوم إضافية (جنيه)</label><input id="tariffExtra" type="number" min="0" step="0.5" placeholder="أي رسوم إضافية"><button class="action" type="button" onclick="saveCustomerTariff()">حفظ التسعيرة</button><div id="tariffStatus" class="small"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
@@ -196,7 +196,7 @@ async function verifyAdminSession(){
  if(!user||!user.app_metadata||user.app_metadata.role!=='admin'){await sbClient.auth.signOut();adminSession=null;throw new Error('هذا الحساب ليس لديه صلاحية إدارة التطبيق.');}
  return true;
 }
-async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';try{const ok=await verifyAdminSession();if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';}else if(adminRecoveryMode)showAdminRecoveryPanel();}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';}}
+async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';try{const ok=await verifyAdminSession();if(adminRecoveryMode){showAdminRecoveryPanel();return;}if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';}}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';if(adminRecoveryMode)showAdminRecoveryPanel();}}
 async function requireAdminSession(){if(!await verifyAdminSession())throw new Error('سجّل دخول الإدارة أولاً.');}
 async function adminSignIn(event){event.preventDefault();const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;box.textContent='جارٍ التحقق من بيانات الدخول...';try{const {data,error}=await sbClient.auth.signInWithPassword({email,password});if(error)throw error;adminSession=data.session;if(!await verifyAdminSession())throw new Error('لم يتم إنشاء جلسة دخول.');document.getElementById('adminLogin').style.display='none';document.getElementById('adminWorkspace').style.display='block';box.textContent='';}catch(e){box.textContent=e.message||'فشل تسجيل الدخول.';}}
 async function requestAdminPasswordReset(){const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim();if(!email){box.textContent='اكتب البريد الإلكتروني أولاً.';return;}box.textContent='جارٍ إرسال رابط الاستعادة...';try{const {error}=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});if(error)throw error;box.textContent='تم طلب إرسال رابط الاستعادة. افتح الرسالة على هذا الهاتف.';}catch(e){box.textContent=e.message||'تعذر إرسال رابط الاستعادة.';}}
@@ -258,7 +258,7 @@ async function registerShop(event){
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function clearRegistrations(){if(confirm('هل تريد مسح النسخة المحلية الاحتياطية؟ لن يتم حذف بيانات قاعدة البيانات.')){localStorage.removeItem('safinet_registrations');renderAdmin()}}
-window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('sbUrl'))document.getElementById('sbUrl').value=c.url;if(document.getElementById('sbKey'))document.getElementById('sbKey').value=c.key;initSupabaseAuth();const hp=new URLSearchParams(window.location.hash.replace(/^#/,'&'));if(hp.get('type')==='recovery'){adminRecoveryMode=true;showAdminRecoveryPanel();}if(document.getElementById('admin').classList.contains('active'))showAdminAccess();});
+window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('sbUrl'))document.getElementById('sbUrl').value=c.url;if(document.getElementById('sbKey'))document.getElementById('sbKey').value=c.key;initSupabaseAuth();const hp=new URLSearchParams(window.location.hash.replace(/^#/,'&'));if(hp.get('type')==='recovery'){adminRecoveryMode=true;go('admin');}else if(document.getElementById('admin').classList.contains('active'))showAdminAccess();});
 
 
 let deliveryMap, routeLayer, pickupMarker, dropMarker;
