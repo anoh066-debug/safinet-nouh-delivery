@@ -76,7 +76,7 @@ function playSafinetChime(){
  try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!safinetAudioContext)safinetAudioContext=new AC();const ctx=safinetAudioContext;if(ctx.state==='suspended')ctx.resume();const now=ctx.currentTime;[880,1175,1480].forEach((freq,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),start=now+i*.16;osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.16,start+.018);gain.gain.exponentialRampToValueAtTime(.0001,start+.13);osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+.14);});}catch(e){}
 }
 function playSafinetNotice(){
- const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}const phrase=new SpeechSynthesisUtterance('سفينة نوح دليفري');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=playSafinetChime;phrase.onerror=playSafinetChime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){playSafinetChime();}}
+ const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}const phrase=new SpeechSynthesisUtterance('تطبيق سفينة نوح يرحب بكم');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=playSafinetChime;phrase.onerror=playSafinetChime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){playSafinetChime();}}
  speak();
 }
 function getLocalOrders(){try{return JSON.parse(localStorage.getItem('safinet_orders')||'[]')}catch(e){return []}}
@@ -742,7 +742,7 @@ function showSafinetWelcome(){
  // نطق رسالة الترحيب بصوت عربي عند فتح التطبيق؛ قد تتطلب بعض المتصفحات تفاعلًا أولًا للسماح بالصوت.
  if('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window){
   let welcomeVoiceStarted=false;
-  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('سفينة نوح دليفري ترحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
+  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح يرحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
   speakWelcome();
   const retryWelcome=()=>{if(!welcomeVoiceStarted)speakWelcome();document.removeEventListener('pointerdown',retryWelcome);document.removeEventListener('keydown',retryWelcome);};
   document.addEventListener('pointerdown',retryWelcome,{once:true});document.addEventListener('keydown',retryWelcome,{once:true});
