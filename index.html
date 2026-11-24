@@ -400,7 +400,7 @@ async function renderRiderLedger(){
   html+='<h3>إسناد طلب إلى مندوب وتحديد أجرة التوصيل</h3>';
   const unassigned=orders.filter(o=>!o.rider_id&&!cancelled(o.status));
   html+=unassigned.map(o=>'<form class="record" onsubmit="assignOrderToRider(event,'+JSON.stringify(o.id)+')"><b>طلب #'+escapeText(o.id)+'</b> — '+escapeText(o.customer_name||'عميل')+'<br>المحل: '+escapeText(o.shop_name||'—')+'<br>الحالة: '+escapeText(o.status||'جديد')+'<label>اختيار المندوب</label><select name="rider_id" required><option value="">اختر مندوبًا</option>'+riders.filter(r=>r.approval_status==='approved').map(r=>'<option value="'+escapeText(r.id)+'">'+escapeText(r.rider_code||'')+' — '+escapeText(r.full_name)+'</option>').join('')+'</select><label>أجرة التوصيل بالجنيه</label><input name="fee" type="number" min="0" step="0.01" required placeholder="أدخل أجرة التوصيل"><button class="action" type="submit">إسناد الطلب وحفظ الأجرة</button></form>').join('')||'<p>لا توجد طلبات غير مسندة حاليًا.</p>';
-  html+='<h3>كل الطلبات وجرد حالتها</h3>'+orders.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>المندوب: '+escapeText(o.rider_code||'غير مسند')+'<br>الحالة: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+' — الإدارة 10%: '+money(done(o.status)?Number(o.delivery_fee)*.1:0)+'</div>').join('');
+  html+='<h3>كل الطلبات وجرد حالتها</h3>'+orders.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>المندوب: '+escapeText(o.rider_code||'غير مسند')+'<br>الحالة الحالية: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+' — الإدارة 10%: '+money(done(o.status)?Number(o.delivery_fee)*.1:0)+'<form class="form" style="padding:8px 0" onsubmit="updateOrderStatus(event,'+JSON.stringify(o.id)+')"><label>تحديث حالة الطلب</label><select name="status" required><option value="جديد" '+(o.status==='جديد'?'selected':'')+'>جديد</option><option value="قيد التجهيز" '+(o.status==='قيد التجهيز'?'selected':'')+'>قيد التجهيز</option><option value="جاري التوصيل" '+(o.status==='جاري التوصيل'?'selected':'')+'>جاري التوصيل</option><option value="تم التسليم" '+(done(o.status)?'selected':'')+'>تم التسليم</option><option value="ملغي" '+(cancelled(o.status)?'selected':'')+'>ملغي</option></select><button class="action" type="submit">حفظ الحالة</button></form></div>').join('');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل كشف المندوبين: '+(e.message||'خطأ في الاتصال');}
 }
@@ -416,6 +416,18 @@ async function assignOrderToRider(event,orderId){
   alert('تم إسناد الطلب وحفظ أجرة التوصيل.');
   await renderRiderLedger();
  }catch(e){alert('تعذر إسناد الطلب: '+(e.message||'خطأ'));}
+}
+async function updateOrderStatus(event,orderId){
+ event.preventDefault();
+ try{
+  await requireAdminSession();
+  const status=event.currentTarget.elements.status.value;
+  const patch={status};
+  if(status==='تم التسليم')patch.delivered_at=new Date().toISOString();
+  await sbRequest('orders?id=eq.'+encodeURIComponent(orderId),'PATCH',patch);
+  alert('تم تحديث حالة الطلب. سيُحتسب نصيب المندوب 90% فقط عند اختيار تم التسليم.');
+  await renderRiderLedger();
+ }catch(e){alert('تعذر تحديث حالة الطلب: '+(e.message||'خطأ'));}
 }
 async function recordRiderPayout(event,riderId){
  event.preventDefault();
