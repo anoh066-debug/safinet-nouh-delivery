@@ -357,7 +357,7 @@ async function registerUser(event,type){
 }
 function riderDocumentButton(label,path){if(!path)return '';return '<button class="action secondary" type="button" style="margin:4px" onclick="openRiderDocument(\''+encodeURIComponent(path)+'\')">'+escapeText(label)+'</button>';}
 async function openRiderDocument(encodedPath){try{await requireAdminSession();const path=decodeURIComponent(encodedPath);const {data,error}=await sbClient.storage.from('rider-private-documents').createSignedUrl(path,120);if(error)throw error;window.open(data.signedUrl,'_blank','noopener');}catch(e){alert('تعذر فتح المستند: '+(e.message||'تحقق من صلاحية الإدارة'));}}
-async async function renderAdmin(){
+async function renderAdmin(){
  const box=document.getElementById('adminData');
  if(!box){alert('تعذر العثور على مساحة عرض بيانات الإدارة.');return;}
  box.textContent='جارٍ التحقق من جلسة الإدارة...';
@@ -371,9 +371,9 @@ async async function renderAdmin(){
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
-async async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
+async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
 
-async async function renderShopVisits(){
+async function renderShopVisits(){
  const panel=document.getElementById('shopVisitPanel'),list=document.getElementById('shopVisitList');
  if(!panel||!list)return;
  panel.style.display='block';list.textContent='جارٍ تحميل قائمة الزيارات...';
@@ -386,7 +386,7 @@ async async function renderShopVisits(){
   }).join(''):'<p>قائمة الزيارات فارغة. أضف المحلات التي تريد زيارتها من النموذج أعلاه.</p>';
  }catch(e){list.textContent='تعذر تحميل قائمة الزيارات: '+(e.message||'خطأ في الاتصال');}
 }
-async async function addShopVisit(event){
+async function addShopVisit(event){
  event.preventDefault();
  const form=event.currentTarget;
  const name=document.getElementById('visitShopName').value.trim();
@@ -404,7 +404,7 @@ async async function addShopVisit(event){
   form.reset();await renderShopVisits();
  }catch(e){alert('تعذر إضافة المحل: '+(e.message||'خطأ في الاتصال'));}
 }
-async async function acceptShopVisit(visitId,shopId){
+async function acceptShopVisit(visitId,shopId){
  if(!confirm('تأكيد موافقة المحل؟ سيظهر في قائمة المحلات للعملاء.'))return;
  try{
   await requireAdminSession();
@@ -415,14 +415,14 @@ async async function acceptShopVisit(visitId,shopId){
   await renderShopVisits();await renderAdmin();
  }catch(e){alert('تعذر نقل المحل: '+(e.message||'خطأ في الاتصال'));}
 }
-async async function rejectShopVisit(visitId){
+async function rejectShopVisit(visitId){
  if(!confirm('حذف هذا المحل من قائمة الزيارات؟ لن نحذف سجل المحل أو أي طلبات.'))return;
  try{await requireAdminSession();await sbRequest('shop_visits?id=eq.'+encodeURIComponent(visitId),'DELETE');await renderShopVisits();}
  catch(e){alert('تعذر الحذف: '+(e.message||'خطأ في الاتصال'));}
 }
 
 
-async async function renderRiderLedger(){
+async function renderRiderLedger(){
  const panel=document.getElementById('riderLedgerPanel'),box=document.getElementById('riderLedgerContent');
  if(!panel||!box)return;
  panel.style.display='block';box.textContent='جارٍ تحميل بيانات المندوبين والطلبات...';
@@ -496,7 +496,7 @@ async function recordRiderPayout(event,riderId){
  }catch(e){alert('تعذر تسجيل الدفعة: '+(e.message||'خطأ'));}
 }
 
-async async function renderOrders(){const box=document.getElementById('adminData');if(!box)return;box.textContent='جارٍ التحقق من دخول الإدارة...';try{await requireAdminSession();box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);const cloud=await sbRequest('orders?select=*&order=created_at.desc');let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية.</p>');box.innerHTML=html;}catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}}
+async function renderOrders(){const box=document.getElementById('adminData');if(!box)return;box.textContent='جارٍ التحقق من دخول الإدارة...';try{await requireAdminSession();box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);const cloud=await sbRequest('orders?select=*&order=created_at.desc');let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية.</p>');box.innerHTML=html;}catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}}
 async function registerShop(event){
  event.preventDefault();
  const name=document.getElementById('merchantName').value.trim();
@@ -609,7 +609,7 @@ async function calculateDeliveryRoute(){
 
 // متجر العميل والسلة والفاتورة والدفع.
 function readCustomerTariff(){return deliveryPricing.length?deliveryPricing:null;}
-async async function renderAdminPricing(){
+async function renderAdminPricing(){
  const box=document.getElementById('tariffStatus');if(!box)return;
  box.textContent='جارٍ التحقق من دخول الإدارة...';
  try{
