@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#0756ad"/>
+<circle cx="256" cy="235" r="158" fill="#fff" opacity=".10"/>
+<path d="M88 300h336l-48 94H142z" fill="#ff8a00" stroke="#fff" stroke-width="15" stroke-linejoin="round"/>
+<path d="M176 291V170h111v121M287 205h54v86" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+<path d="M205 190h54M205 226h54" stroke="#ffdf35" stroke-width="13" stroke-linecap="round"/>
+<path d="M75 420q45-28 90 0t90 0 90 0 92 0" fill="none" stroke="#8de5ff" stroke-width="17" stroke-linecap="round"/>
+<text x="256" y="475" font-family="Tahoma,Arial,sans-serif" font-size="38" font-weight="bold" text-anchor="middle" fill="#fff">سفينة نوح</text>
+</svg>
