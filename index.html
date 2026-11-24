@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>سفينة نوح دليفري</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#eaf2ff;font-family:Tahoma,Arial,sans-serif;color:#09285d}
-.app{max-width:480px;margin:auto;min-height:100vh;background:#fff;box-shadow:0 0 24px #1233}
+*{box-sizing:border-box}body{margin:0;background:#0756ad;font-family:Tahoma,Arial,sans-serif;color:#09285d}
+.app{max-width:480px;margin:auto;min-height:100vh;min-height:100dvh;background:#0756ad;box-shadow:0 0 24px #1233}
 .screen{display:none;position:relative;width:100%}.screen.active{display:block}
+#home.screen.active{min-height:100vh;min-height:100dvh;background:#0756ad}
+#home .poster-wrap{height:100vh;height:100dvh;overflow:hidden}
+#home .poster-wrap>.poster{width:100%;height:100%;object-fit:fill}
 .poster{display:block;width:100%;height:auto}
 .poster-wrap{position:relative;width:100%;line-height:0}
 .poster-wrap .poster{display:block;width:100%;height:auto}
 .poster-admin-info{position:absolute;z-index:3;left:5%;right:5%;bottom:2.4%;height:8.8%;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 8px;box-sizing:border-box;background:linear-gradient(180deg,#073b91 0%,#052765 100%);color:#fff;font-size:clamp(11px,3.25vw,20px);font-weight:900;line-height:1.35;text-align:center;text-shadow:0 1px 3px #001b50;border-radius:10px;white-space:nowrap}
+.poster-admin-open{border:0;background:transparent;color:#ffdf35;font:inherit;font-weight:900;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .poster-admin-info a{color:#fff;text-decoration:none;font-weight:900}
 .hit{position:absolute;z-index:2;border:0;background:transparent;cursor:pointer;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 /* مناطق الضغط مضبوطة على البطاقات الثلاث داخل صورة الخلفية نفسها */
@@ -106,7 +110,7 @@ function showMyOrders(){
 <button class="hit admin" type="button" aria-label="تسجيل المحلات" title="تسجيل المحلات" onclick="go('merchant')"></button>
 <button class="hit driver" type="button" aria-label="مندوب توصيل" title="مندوب توصيل" onclick="go('driver')"></button>
 <button class="hit customer" type="button" aria-label="عميل" title="عميل" onclick="go('customer')"></button>
-<div class="poster-admin-info">إدارة التطبيق – نوح سمارة – <a href="tel:01094881059">01094881059</a></div>
+<div class="poster-admin-info"><button class="poster-admin-open" type="button" onclick="go('admin')">إدارة التطبيق</button><span>– نوح سمارة –</span><a href="tel:01094881059">01094881059</a></div>
 </div>
 </section>
 <section id="customer" class="screen">
