@@ -12,17 +12,18 @@
 .screen{isolation:isolate;position:relative}
 .screen::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background-image:url('/safinet-noah-icon(1).png?v=7');background-repeat:no-repeat;background-position:center center;background-size:min(82vw,360px) auto;opacity:.07}
 .screen>:not(style):not(script){position:relative;z-index:1}
-#home.screen.active{min-height:100vh;min-height:100dvh;background:#f4f7fc;padding:0 0 18px}
-#home .home-poster{position:relative;width:100%;aspect-ratio:1067/1536;overflow:hidden;background:#fff}
-#home .home-poster>img{display:block;width:100%;height:100%;object-fit:contain}
+#home.screen.active{min-height:100vh;min-height:100dvh;background:#0756ad;padding:0}
+#home .home-poster{position:relative;width:100%;aspect-ratio:1023/1475;overflow:hidden;background:#0756ad}
+#home .home-poster>img{display:block;width:100%;height:100%;object-fit:fill}
 #home .poster-hit{position:absolute;top:44%;height:35%;width:32%;border:0;background:transparent;border-radius:16px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 #home .poster-hit:focus-visible{outline:3px solid #0756ad;outline-offset:-5px;background:#ffffff20}
 #home .poster-merchant{left:1%}
 #home .poster-driver{left:34%}
 #home .poster-customer{left:67%}
-#home .home-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 14px;background:#f4f7fc}
-#home .home-actions .action{margin:0;min-height:44px;width:100%;font-size:15px}
-#home .home-footer{text-align:center;padding:8px 10px 16px;background:#f4f7fc;color:#17345d;line-height:1.8;font-size:14px}
+#home .poster-admin{position:absolute;top:87.5%;left:48%;width:31%;height:5%;border:0;background:transparent;border-radius:8px;cursor:pointer;touch-action:manipulation}
+#home .poster-phone{position:absolute;top:93.5%;left:25%;width:53%;height:5%;border:0;background:transparent;border-radius:8px;cursor:pointer;touch-action:manipulation}
+#home .poster-share{position:absolute;top:1.2%;right:2%;width:42px;height:42px;border:1px solid #ffffff99;border-radius:50%;background:#073b91cc;color:#fff;font-size:21px;z-index:3;cursor:pointer}
+#home .poster-admin:focus-visible,#home .poster-phone:focus-visible,#home .poster-share:focus-visible{outline:3px solid #fff;background:#ffffff30}
 #home .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
 .hit{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .back{position:absolute;top:12px;right:12px;background:#073b91;color:white;border:0;border-radius:22px;padding:10px 16px;font-size:15px;z-index:3}
@@ -150,12 +151,10 @@ if ("serviceWorker" in navigator) {
 <button class="poster-hit poster-merchant" type="button" aria-label="دخول أصحاب المحلات" onclick="go('merchant')"></button>
 <button class="poster-hit poster-driver" type="button" aria-label="دخول مندوب التوصيل" onclick="go('driver')"></button>
 <button class="poster-hit poster-customer" type="button" aria-label="دخول العميل" onclick="go('customer')"></button>
+<button class="poster-admin" type="button" aria-label="إدارة التطبيق" onclick="go('admin')"></button>
+<button class="poster-phone" type="button" aria-label="اتصل بإدارة التطبيق" onclick="window.location.href='tel:01094881059'"></button>
+<button class="poster-share" type="button" aria-label="مشاركة التطبيق" onclick="shareApp()">↗</button>
 </div>
-<div class="home-actions">
-<button class="action secondary" type="button" onclick="go('admin')">⚙️ إدارة التطبيق</button>
-<button class="action" type="button" onclick="shareApp()">↗️ مشاركة التطبيق</button>
-</div>
-<div class="home-footer">إدارة التطبيق – نوح أحمد سمارة<br><a href="tel:01094881059">01094881059</a></div>
 </section>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
