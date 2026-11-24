@@ -17,6 +17,7 @@
 .poster-admin-info{position:absolute;z-index:3;left:5%;right:5%;bottom:2.4%;height:8.8%;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 8px;box-sizing:border-box;background:linear-gradient(180deg,#073b91 0%,#052765 100%);color:#fff;font-size:clamp(11px,3.25vw,20px);font-weight:900;line-height:1.35;text-align:center;text-shadow:0 1px 3px #001b50;border-radius:10px;white-space:nowrap}
 .poster-admin-open{border:0;background:transparent;color:#ffdf35;font:inherit;font-weight:900;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .poster-admin-info a{color:#fff;text-decoration:none;font-weight:900}
+.share-app-btn{position:absolute;z-index:4;left:50%;bottom:12.2%;transform:translateX(-50%);border:2px solid #fff;border-radius:28px;padding:10px 22px;background:linear-gradient(135deg,#ff8a00,#f05a00);color:#fff;font:900 16px Tahoma,Arial,sans-serif;white-space:nowrap;box-shadow:0 4px 12px #001b5066;cursor:pointer;-webkit-tap-highlight-color:transparent}.share-app-btn:active{transform:translateX(-50%) scale(.97)}
 .hit{position:absolute;z-index:2;border:0;background:transparent;cursor:pointer;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 /* مناطق الضغط مضبوطة على البطاقات الثلاث داخل صورة الخلفية نفسها */
 .admin{left:1.2%;top:40.3%;width:32.1%;height:38.4%}
@@ -93,6 +94,14 @@ async function submitDeliveryOrder(event){
   : '<b>تم حفظ الطلب على هذا الهاتف فقط.</b><br>رقم الطلب: '+escapeText(order.local_order_no)+'<br>لكي يظهر للمندوبين على هواتف أخرى يجب ربط قاعدة البيانات من الإدارة. '+escapeText(remoteMessage);
  showMyOrders();
 }
+async function shareApp(){
+ const shareData={title:'سفينة نوح دليفري',text:'جرّب تطبيق سفينة نوح دليفري لطلب التوصيل من المحلات داخل مدينة السادات.',url:'https://misty-band-02bb.anoh066.workers.dev'};
+ try{
+  if(navigator.share){await navigator.share(shareData);return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareData.url);alert('تم نسخ رابط التطبيق. ابعته لأصحابك على واتساب أو أي تطبيق.');return;}
+  const field=document.createElement('textarea');field.value=shareData.url;field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();const copied=document.execCommand('copy');field.remove();alert(copied?'تم نسخ رابط التطبيق. ابعته لأصحابك.':'انسخ رابط التطبيق يدويًا: '+shareData.url);
+ }catch(e){if(e&&e.name==='AbortError')return;alert('تعذرت المشاركة الآن. رابط التطبيق: '+shareData.url);}
+}
 function showMyOrders(){
  const box=document.getElementById('myOrders'); if(!box)return;
  const rows=getLocalOrders();
@@ -111,6 +120,7 @@ function showMyOrders(){
 <button class="hit driver" type="button" aria-label="مندوب توصيل" title="مندوب توصيل" onclick="go('driver')"></button>
 <button class="hit customer" type="button" aria-label="عميل" title="عميل" onclick="go('customer')"></button>
 <div class="poster-admin-info"><button class="poster-admin-open" type="button" onclick="go('admin')">إدارة التطبيق</button><span>– نوح سمارة –</span><a href="tel:01094881059">01094881059</a></div>
+<button class="share-app-btn" type="button" onclick="shareApp()">↗ مشاركة التطبيق</button>
 </div>
 </section>
 <section id="customer" class="screen">
