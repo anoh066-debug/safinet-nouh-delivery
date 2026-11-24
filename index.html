@@ -12,19 +12,18 @@
 .screen{isolation:isolate;position:relative}
 .screen::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background-image:url('/safinet-noah-icon(1).png?v=7');background-repeat:no-repeat;background-position:center center;background-size:min(82vw,360px) auto;opacity:.07}
 .screen>:not(style):not(script){position:relative;z-index:1}
-#home.screen.active{min-height:100vh;min-height:100dvh;background:linear-gradient(160deg,#f3f8ff 0%,#e8f2ff 55%,#fff 100%);padding:22px 16px 28px}
-#home .home-brand{text-align:center;padding:12px 8px 20px}
-#home .home-brand .brand-mark{width:104px;height:104px;object-fit:contain;display:block;margin:0 auto 10px;filter:drop-shadow(0 5px 9px #123c6320)}
-#home .home-brand h1{margin:0;color:#073b91;font-size:27px;font-weight:900}
-#home .home-brand p{margin:7px 0 0;color:#526b8c;font-size:14px}
-#home .home-menu{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 16px}
-#home .home-tile{min-height:128px;border:1px solid #d4e3f8;border-radius:20px;background:#fff;color:#123c63;padding:18px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;font:900 17px Tahoma,Arial,sans-serif;box-shadow:0 5px 18px #123c6310;cursor:pointer}
-#home .home-tile .tile-icon{font-size:34px;line-height:1}
-#home .home-tile.primary{background:linear-gradient(145deg,#0878c9,#073b91);color:#fff;border:0}
-#home .home-tile.shop{grid-column:1/-1;min-height:66px;flex-direction:row;background:linear-gradient(120deg,#12b76a,#079455);color:#fff;border:0}
-#home .home-share{width:100%;border:0;border-radius:16px;padding:14px;background:#fff;color:#0756ad;font:900 15px Tahoma,Arial,sans-serif;box-shadow:0 4px 14px #123c6310}
-#home .home-contact{text-align:center;color:#60758f;font-size:13px;line-height:1.9;padding:16px 6px 0}
-#home .home-contact a{color:#0756ad;text-decoration:none;font-weight:bold}
+#home.screen.active{min-height:100vh;min-height:100dvh;background:#f4f7fc;padding:0 0 18px}
+#home .home-poster{position:relative;width:100%;aspect-ratio:1067/1536;overflow:hidden;background:#fff}
+#home .home-poster>img{display:block;width:100%;height:100%;object-fit:contain}
+#home .poster-hit{position:absolute;top:44%;height:35%;width:32%;border:0;background:transparent;border-radius:16px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#home .poster-hit:focus-visible{outline:3px solid #0756ad;outline-offset:-5px;background:#ffffff20}
+#home .poster-merchant{left:1%}
+#home .poster-driver{left:34%}
+#home .poster-customer{left:67%}
+#home .home-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 14px;background:#f4f7fc}
+#home .home-actions .action{margin:0;min-height:44px;width:100%;font-size:15px}
+#home .home-footer{text-align:center;padding:8px 10px 16px;background:#f4f7fc;color:#17345d;line-height:1.8;font-size:14px}
+#home .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
 .hit{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .back{position:absolute;top:12px;right:12px;background:#073b91;color:white;border:0;border-radius:22px;padding:10px 16px;font-size:15px;z-index:3}
 .notice{padding:18px;text-align:center;background:#fff}
@@ -146,19 +145,17 @@ if ("serviceWorker" in navigator) {
 <body>
 <main class="app">
 <section id="home" class="screen active">
-<div class="home-brand">
-<img class="brand-mark" src="/safinet-noah-icon(1).png?v=4" alt="شعار سفينة نوح دليفري">
-<h1>سفينة نوح دليفري</h1>
-<p>خدمة توصيل الطلبات داخل مدينة السادات</p>
+<div class="home-poster">
+<img src="/home-screen.jpg.jpg" alt="واجهة سفينة نوح دليفري - العميل والمندوب وأصحاب المحلات">
+<button class="poster-hit poster-merchant" type="button" aria-label="دخول أصحاب المحلات" onclick="go('merchant')"></button>
+<button class="poster-hit poster-driver" type="button" aria-label="دخول مندوب التوصيل" onclick="go('driver')"></button>
+<button class="poster-hit poster-customer" type="button" aria-label="دخول العميل" onclick="go('customer')"></button>
 </div>
-<div class="home-menu">
-<button class="home-tile primary" type="button" onclick="go('customer')"><span class="tile-icon">🛍️</span><span>دخول العميل</span></button>
-<button class="home-tile" type="button" onclick="go('driver')"><span class="tile-icon">🛵</span><span>دخول المندوب</span></button>
-<button class="home-tile shop" type="button" onclick="go('merchant')"><span class="tile-icon">🏪</span><span>تسجيل المحلات التجارية</span></button>
-<button class="home-tile" type="button" onclick="go('admin')"><span class="tile-icon">⚙️</span><span>إدارة التطبيق</span></button>
-<button class="home-tile" type="button" onclick="shareApp()"><span class="tile-icon">↗️</span><span>مشاركة التطبيق</span></button>
+<div class="home-actions">
+<button class="action secondary" type="button" onclick="go('admin')">⚙️ إدارة التطبيق</button>
+<button class="action" type="button" onclick="shareApp()">↗️ مشاركة التطبيق</button>
 </div>
-<div class="home-contact">إدارة التطبيق – نوح سمارة<br><a href="tel:01094881059">01094881059</a></div>
+<div class="home-footer">إدارة التطبيق – نوح أحمد سمارة<br><a href="tel:01094881059">01094881059</a></div>
 </section>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
