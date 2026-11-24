@@ -8,6 +8,9 @@
 *{box-sizing:border-box}body{margin:0;background:#0756ad;font-family:Tahoma,Arial,sans-serif;color:#09285d}
 .app{max-width:480px;margin:auto;min-height:100vh;min-height:100dvh;background:#0756ad;box-shadow:0 0 24px #1233}
 .screen{display:none;position:relative;width:100%}.screen.active{display:block}
+/* علامة مائية شفافة لشعار سفينة نوح داخل صفحات التطبيق */
+.screen:not(#home){isolation:isolate}
+.screen:not(#home)::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:url('/safinet-noah-icon(1).png?v=5');background-repeat:no-repeat;background-position:center center;background-size:min(76vw,340px) auto;opacity:.055}
 #home.screen.active{min-height:100vh;min-height:100dvh;background:linear-gradient(160deg,#f3f8ff 0%,#e8f2ff 55%,#fff 100%);padding:22px 16px 28px}
 #home .home-brand{text-align:center;padding:12px 8px 20px}
 #home .home-brand .brand-mark{width:104px;height:104px;object-fit:contain;display:block;margin:0 auto 10px;filter:drop-shadow(0 5px 9px #123c6320)}
