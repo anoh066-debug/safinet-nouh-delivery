@@ -11,6 +11,8 @@
 .poster{display:block;width:100%;height:auto}
 .poster-wrap{position:relative;width:100%;line-height:0}
 .poster-wrap .poster{display:block;width:100%;height:auto}
+.poster-admin-info{position:absolute;z-index:3;left:5%;right:5%;bottom:2.4%;height:8.8%;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 8px;box-sizing:border-box;background:linear-gradient(180deg,#073b91 0%,#052765 100%);color:#fff;font-size:clamp(11px,3.25vw,20px);font-weight:900;line-height:1.35;text-align:center;text-shadow:0 1px 3px #001b50;border-radius:10px;white-space:nowrap}
+.poster-admin-info a{color:#fff;text-decoration:none;font-weight:900}
 .hit{position:absolute;z-index:2;border:0;background:transparent;cursor:pointer;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 /* مناطق الضغط مضبوطة على البطاقات الثلاث داخل صورة الخلفية نفسها */
 .admin{left:1.2%;top:40.3%;width:32.1%;height:38.4%}
@@ -104,11 +106,8 @@ function showMyOrders(){
 <button class="hit admin" type="button" aria-label="تسجيل المحلات" title="تسجيل المحلات" onclick="go('merchant')"></button>
 <button class="hit driver" type="button" aria-label="مندوب توصيل" title="مندوب توصيل" onclick="go('driver')"></button>
 <button class="hit customer" type="button" aria-label="عميل" title="عميل" onclick="go('customer')"></button>
+<div class="poster-admin-info">إدارة التطبيق – نوح سمارة – <a href="tel:01094881059">01094881059</a></div>
 </div>
-<div class="home-actions" aria-label="إدارة التطبيق">
-<button class="action secondary" type="button" onclick="go('admin')">⚙️ إدارة التطبيق</button>
-</div>
-<div class="home-footer"><b>إدارة التطبيق – نوح سماره</b> – <a href="tel:01094881059">01094881059</a><br><button type="button" onclick="go('admin')" style="border:0;background:transparent;color:#075eb5;text-decoration:underline;font:inherit;font-weight:700;padding:6px;cursor:pointer">دخول الإدارة</button></div>
 </section>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
