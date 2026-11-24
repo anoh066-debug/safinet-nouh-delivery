@@ -736,19 +736,40 @@ async function renderOrders(){
  }).catch(e=>{box.textContent='تعذر تحميل الطلبات: '+(e.message||'تعذر الاتصال');});
 }
 window.addEventListener('load',()=>{loadDeliveryPricing().catch(()=>{});});
+function hideSafinetWelcome(){
+ const box=document.getElementById('welcomeGreeting');
+ if(box){box.classList.remove('show');box.remove();}
+ try{if('speechSynthesis'in window)window.speechSynthesis.cancel();}catch(e){}
+}
 function showSafinetWelcome(){
- let box=document.getElementById('welcomeGreeting');
- if(!box){box=document.createElement('div');box.id='welcomeGreeting';box.setAttribute('role','status');box.setAttribute('aria-live','polite');box.textContent='تطبيق سفينة نوح دليفري يرحب بكم';document.body.appendChild(box);}
- box.classList.remove('show');void box.offsetWidth;box.classList.add('show');
- clearTimeout(window.safinetWelcomeTimer);window.safinetWelcomeTimer=setTimeout(()=>box.classList.remove('show'),5200);
- // نطق رسالة الترحيب بصوت عربي عند فتح التطبيق؛ قد تتطلب بعض المتصفحات تفاعلًا أولًا للسماح بالصوت.
- if('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window){
-  let welcomeVoiceStarted=false;
-  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح دليفري يرحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
-  speakWelcome();
-  const retryWelcome=()=>{if(!welcomeVoiceStarted)speakWelcome();document.removeEventListener('pointerdown',retryWelcome);document.removeEventListener('keydown',retryWelcome);};
-  document.addEventListener('pointerdown',retryWelcome,{once:true});document.addEventListener('keydown',retryWelcome,{once:true});
+ if(document.getElementById('welcomeGreeting'))return;
+ const box=document.createElement('div');
+ box.id='welcomeGreeting';
+ box.setAttribute('role','dialog');
+ box.setAttribute('aria-label','شاشة ترحيب سفينة نوح دليفري');
+ box.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0756ad;padding:0;margin:0;overflow:hidden;';
+ const img=document.createElement('img');
+ img.src='/file_00000000b138820aa5bea2cddfe639a8.png';
+ img.alt='سفينة نوح دليفري ترحب بكم';
+ img.style.cssText='display:block;width:100%;height:100%;object-fit:contain;';
+ box.appendChild(img);
+ document.body.appendChild(box);
+ let finished=false;
+ const finish=()=>{if(finished)return;finished=true;hideSafinetWelcome();};
+ if('speechSynthesis'in window && 'SpeechSynthesisUtterance'in window){
+  try{
+   window.speechSynthesis.cancel();
+   const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح دليفري يرحب بكم');
+   greeting.lang='ar-EG';greeting.rate=.9;greeting.pitch=1.05;greeting.volume=1;
+   greeting.onend=finish;
+   greeting.onerror=finish;
+   window.speechSynthesis.speak(greeting);
+  }catch(e){finish();}
+ }else{
+  finish();
  }
+ // منع بقاء شاشة الترحيب معلقة إذا منع المتصفح تشغيل الصوت تلقائيًا.
+ setTimeout(()=>{if(!finished){try{if(window.speechSynthesis&&!window.speechSynthesis.speaking)finish();}catch(e){finish();}}},12000);
 }
 window.addEventListener('load',()=>{setTimeout(showSafinetWelcome,650);});
 
