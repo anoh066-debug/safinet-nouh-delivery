@@ -741,8 +741,11 @@ function showSafinetWelcome(){
  clearTimeout(window.safinetWelcomeTimer);window.safinetWelcomeTimer=setTimeout(()=>box.classList.remove('show'),5200);
  // نطق رسالة الترحيب بصوت عربي عند فتح التطبيق؛ قد تتطلب بعض المتصفحات تفاعلًا أولًا للسماح بالصوت.
  if('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window){
-  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('سفينة نوح دليفري ترحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;window.speechSynthesis.speak(greeting);return true;}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);return false;}};
-  if(!speakWelcome()){const retry=()=>{speakWelcome();document.removeEventListener('pointerdown',retry);document.removeEventListener('keydown',retry);};document.addEventListener('pointerdown',retry,{once:true});document.addEventListener('keydown',retry,{once:true});}
+  let welcomeVoiceStarted=false;
+  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('سفينة نوح دليفري ترحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
+  speakWelcome();
+  const retryWelcome=()=>{if(!welcomeVoiceStarted)speakWelcome();document.removeEventListener('pointerdown',retryWelcome);document.removeEventListener('keydown',retryWelcome);};
+  document.addEventListener('pointerdown',retryWelcome,{once:true});document.addEventListener('keydown',retryWelcome,{once:true});
  }
 }
 window.addEventListener('load',()=>{setTimeout(showSafinetWelcome,650);});
