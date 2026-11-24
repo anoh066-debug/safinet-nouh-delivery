@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1440">
+<defs>
+ <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#0750bd"/><stop offset="1" stop-color="#00358f"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#249cff" stop-opacity=".85"/><stop offset="1" stop-color="#249cff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="hull" x2="0" y2="1"><stop stop-color="#ff9b00"/><stop offset="1" stop-color="#ed4d00"/></linearGradient>
+ <linearGradient id="gold" x2="0" y2="1"><stop stop-color="#fff45c"/><stop offset="1" stop-color="#ffbd00"/></linearGradient>
+ <linearGradient id="wave" x2="0" y2="1"><stop stop-color="#a4f7ff"/><stop offset=".5" stop-color="#16c5f5"/><stop offset="1" stop-color="#0873dc"/></linearGradient>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur in="SourceAlpha" stdDeviation="12"/><feOffset dy="12"/><feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1080" height="1440" fill="url(#bg)"/>
+<circle cx="540" cy="550" r="430" fill="url(#glow)"/>
+<circle cx="540" cy="550" r="300" fill="none" stroke="#53caff" stroke-width="8" opacity=".55"/>
+<g fill="#fff" opacity=".9"><path d="M0 475q80-105 160 0 75-85 150 0 55 50 105 25H0z"/><path d="M760 480q80-95 160 0 75-75 160 0v65H760z"/></g>
+<g fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"><path d="M190 270q65-50 125 0 35-45 75-50"/><path d="M760 235q65-45 120 0 35-38 75-40"/><path d="M870 340q42-32 80 0 24-28 52-30"/></g>
+<g filter="url(#shadow)">
+ <path d="M400 650V350q0-22 22-22h235q22 0 22 22v300" fill="#0754b7" stroke="#fff" stroke-width="28" stroke-linejoin="round"/>
+ <path d="M680 650V415h105v235" fill="#0754b7" stroke="#fff" stroke-width="26" stroke-linejoin="round"/>
+ <path d="M465 390h105M465 455h105" stroke="url(#gold)" stroke-width="28" stroke-linecap="round"/>
+ <path d="M270 650h540l-65 170H345z" fill="url(#hull)" stroke="#fff" stroke-width="25" stroke-linejoin="round"/>
+ <path d="M315 690h450" stroke="#ffc12a" stroke-width="14" opacity=".9"/>
+</g>
+<path d="M80 860q115-120 230-35t230 0 230-5 230 35 80-10" fill="none" stroke="url(#wave)" stroke-width="55" stroke-linecap="round"/>
+<path d="M60 915q125-85 250-10t240 0 240-5 230 10" fill="none" stroke="#0878df" stroke-width="35" stroke-linecap="round"/>
+<g fill="#fff" opacity=".9"><path d="M165 790q-55-45-78 0 45-10 78 0M900 785q50-45 78 0-45-10-78 0"/></g>
+<text x="540" y="1080" text-anchor="middle" direction="rtl" font-family="Tahoma,Arial,sans-serif" font-size="108" font-weight="900" fill="#fff" stroke="#073d9d" stroke-width="12" paint-order="stroke">سفينة نوح</text>
+<text x="540" y="1200" text-anchor="middle" direction="rtl" font-family="Tahoma,Arial,sans-serif" font-size="92" font-weight="900" fill="url(#gold)" stroke="#073d9d" stroke-width="8" paint-order="stroke">دليفري</text>
+<path d="M190 1260q350-55 700 0l-30 110H220z" fill="url(#gold)" stroke="#ffd52e" stroke-width="8" filter="url(#shadow)"/>
+<text x="560" y="1340" text-anchor="middle" direction="rtl" font-family="Tahoma,Arial,sans-serif" font-size="64" font-weight="900" fill="#d71920">ترحب بكم ♥</text>
+</svg>
