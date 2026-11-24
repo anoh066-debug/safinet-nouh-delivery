@@ -260,7 +260,9 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" onclick="renderOrders()">عرض الطلبات</button>
 <button class="action secondary" type="button" onclick="renderRiderLedger()">متابعة المندوبين وكشف الحساب وجرد الطلبات</button>
 <button class="action secondary" type="button" onclick="renderShopVisits()">قائمة زيارات المحلات</button>
+<button class="action secondary" type="button" onclick="renderShopApprovals()">موافقات المحلات</button>
 <div id="shopVisitPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h3>إضافة محل لقائمة الزيارات</h3><form id="shopVisitForm" onsubmit="addShopVisit(event)"><label for="visitShopName">اسم المحل</label><input id="visitShopName" required maxlength="120" placeholder="اسم المحل"><label for="visitShopPhone">رقم الهاتف (اختياري)</label><input id="visitShopPhone" inputmode="tel" maxlength="11" placeholder="01xxxxxxxxx"><label for="visitShopType">نوع النشاط</label><input id="visitShopType" maxlength="100" placeholder="مثال: سوبر ماركت أو صيدلية"><label for="visitShopAddress">العنوان</label><input id="visitShopAddress" maxlength="300" placeholder="المنطقة والشارع"><button class="action" type="submit">إضافة إلى قائمة الزيارات</button></form><div id="shopVisitList" class="small" style="margin-top:12px"></div></div>
+<div id="shopApprovalPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h2>طلبات تسجيل المحلات</h2><p class="small">المحلات التي سجلت من نموذج التسجيل وتنتظر مراجعة الإدارة فقط.</p><div id="shopApprovalList" class="small"></div></div>
 <div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُقرأ مباشرة من شرائح التسعير النشطة المحفوظة في قاعدة البيانات، ويستخدمها العميل عند حساب المسافة.</p><button class="action secondary" type="button" onclick="renderAdminPricing()">تحديث وعرض التسعيرة المحفوظة</button><div id="tariffStatus" class="small"></div></div><div id="riderLedgerPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h2>متابعة المندوبين وكشف الحساب</h2><p class="small">نصيب المندوب 90% ونصيب الإدارة 10% من أجرة التوصيل فقط. الطلبات الملغاة لا تُحتسب.</p><div id="riderLedgerContent"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
 </div>
 </section>
@@ -385,6 +387,25 @@ async function renderShopVisits(){
    return '<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+'<br><small>الحالة: ضمن قائمة الزيارات</small><div class="row" style="gap:8px;margin-top:10px"><button class="action" type="button" onclick="acceptShopVisit('+Number(v.id)+','+Number(v.shop_id)+')">✓ موافق — إظهار للعملاء</button><button class="action secondary" type="button" onclick="rejectShopVisit('+Number(v.id)+')">✕ رفض — حذف من الزيارات</button></div></div>';
   }).join(''):'<p>قائمة الزيارات فارغة. أضف المحلات التي تريد زيارتها من النموذج أعلاه.</p>';
  }catch(e){list.textContent='تعذر تحميل قائمة الزيارات: '+(e.message||'خطأ في الاتصال');}
+}
+async function renderShopApprovals(){
+ const panel=document.getElementById('shopApprovalPanel'),list=document.getElementById('shopApprovalList');
+ if(!panel||!list)return;
+ panel.style.display='block';list.textContent='جارٍ تحميل طلبات تسجيل المحلات...';
+ try{
+  await requireAdminSession();
+  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_registered,is_active&is_registered=eq.true&is_active=eq.false&order=shop_name.asc');
+  list.innerHTML=shops.length?shops.map(s=>'<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+'<br><small>الحالة: طلب تسجيل — بانتظار موافقة الإدارة</small><div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="action" type="button" onclick="approveShop('+JSON.stringify(s.id)+')">اعتماد المحل</button><button class="action secondary" type="button" onclick="rejectShopRegistration('+JSON.stringify(s.id)+')">رفض الطلب</button></div></div>').join(''):'<p>لا توجد طلبات تسجيل محلات معلقة حاليًا.</p>';
+ }catch(e){list.textContent='تعذر تحميل طلبات المحلات: '+(e.message||'خطأ في الاتصال');}
+}
+async function rejectShopRegistration(id){
+ if(!confirm('رفض طلب تسجيل هذا المحل؟ سيظل سجل المحل محفوظًا ولن يظهر للعملاء.'))return;
+ try{
+  await requireAdminSession();
+  await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_registered:false,is_active:false});
+  alert('تم رفض الطلب مع الاحتفاظ ببيانات المحل.');
+  await renderShopApprovals();
+ }catch(e){alert('تعذر رفض الطلب: '+(e.message||'خطأ في الاتصال'));}
 }
 async function addShopVisit(event){
  event.preventDefault();
