@@ -246,7 +246,7 @@ async function registerUser(event,type){
  const address=document.getElementById('riderAddress').value.trim();
  const details=document.getElementById('riderVehicleDetails').value.trim();
  const plate=document.getElementById('riderPlate').value.trim();
- if(fullName.length<3||!/^01[0-9]{9}$/.test(phone)||!vehicle||address.length<3||details.length<2||(vehicle==='motorcycle'&&!plate)){box.textContent='راجع الاسم بالكامل، ورقم الموبايل، والمنطقة، وتفاصيل المركبة. ورقم اللوحة مطلوب للموتوسيكل.';return}
+ if(fullName.split(/\\s+/).filter(Boolean).length<4||!/^01[0-9]{9}$/.test(phone)||!vehicle||address.length<3||details.length<2||(vehicle==='motorcycle'&&!plate)){box.textContent='اكتب الاسم الرباعي، وتأكد من رقم الموبايل والمنطقة وتفاصيل المركبة. رقم اللوحة مطلوب للموتوسيكل.';return}
  box.textContent='جارٍ إرسال طلب تسجيل المندوب...';
  try{
   await sbRequest('rpc/register_rider','POST',{p_full_name:fullName,p_phone:phone,p_address:address,p_vehicle_type:vehicle,p_vehicle_details:details||null,p_plate_number:plate||null});
