@@ -1,5 +1,5 @@
-const CACHE_NAME = "safinet-shell-v2";
-const APP_SHELL = ["/", "/manifest.json", "/icon.svg", "/welcome-bg.svg"];
+const CACHE_NAME = "safinet-shell-v3";
+const APP_SHELL = ["/", "/manifest.json", "/icon.svg", "/safinet-noah-icon(1).png", "/welcome-bg.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
