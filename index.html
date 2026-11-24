@@ -148,11 +148,13 @@ if ("serviceWorker" in navigator) {
 <section id="home" class="screen active">
 <div class="poster-wrap">
 <img class="poster" src="/welcome-bg.svg" alt="سفينة نوح دليفري ترحب بكم">
-<button class="hit admin" type="button" aria-label="تسجيل المحلات" title="تسجيل المحلات" onclick="go('merchant')"></button>
 <button class="hit driver" type="button" aria-label="مندوب توصيل" title="مندوب توصيل" onclick="go('driver')"></button>
 <button class="hit customer" type="button" aria-label="عميل" title="عميل" onclick="go('customer')"></button>
 <div class="poster-admin-info"><button class="poster-admin-open" type="button" onclick="go('admin')">إدارة التطبيق</button><span>– نوح سمارة –</span><a href="tel:01094881059">01094881059</a></div>
 <button class="share-app-btn" type="button" onclick="shareApp()">↗ مشاركة التطبيق</button>
+</div>
+<div class="home-actions">
+<button class="action" type="button" onclick="go('merchant')">🏪 تسجيل المحلات التجارية</button>
 </div>
 </section>
 <section id="customer" class="screen">
@@ -736,13 +738,13 @@ async function renderOrders(){
 window.addEventListener('load',()=>{loadDeliveryPricing().catch(()=>{});});
 function showSafinetWelcome(){
  let box=document.getElementById('welcomeGreeting');
- if(!box){box=document.createElement('div');box.id='welcomeGreeting';box.setAttribute('role','status');box.setAttribute('aria-live','polite');box.textContent='سفينة نوح دليفري ترحب بكم ❤️';document.body.appendChild(box);}
+ if(!box){box=document.createElement('div');box.id='welcomeGreeting';box.setAttribute('role','status');box.setAttribute('aria-live','polite');box.textContent='تطبيق سفينة نوح دليفري يرحب بكم';document.body.appendChild(box);}
  box.classList.remove('show');void box.offsetWidth;box.classList.add('show');
  clearTimeout(window.safinetWelcomeTimer);window.safinetWelcomeTimer=setTimeout(()=>box.classList.remove('show'),5200);
  // نطق رسالة الترحيب بصوت عربي عند فتح التطبيق؛ قد تتطلب بعض المتصفحات تفاعلًا أولًا للسماح بالصوت.
  if('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window){
   let welcomeVoiceStarted=false;
-  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('سفينة نوح دليفري ترحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
+  const speakWelcome=()=>{try{window.speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح دليفري يرحب بكم');greeting.lang='ar-EG';greeting.rate=0.9;greeting.pitch=1.05;greeting.onstart=()=>{welcomeVoiceStarted=true;};window.speechSynthesis.speak(greeting);}catch(e){console.warn('تعذر تشغيل الترحيب الصوتي:',e);}};
   speakWelcome();
   const retryWelcome=()=>{if(!welcomeVoiceStarted)speakWelcome();document.removeEventListener('pointerdown',retryWelcome);document.removeEventListener('keydown',retryWelcome);};
   document.addEventListener('pointerdown',retryWelcome,{once:true});document.addEventListener('keydown',retryWelcome,{once:true});
