@@ -207,9 +207,10 @@ function showMyOrders(){
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>إعداد اتصال قاعدة البيانات ومتابعة التسجيلات والطلبات.</p>
 <button class="action secondary" onclick="renderAdmin()">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" onclick="renderOrders()">عرض الطلبات</button>
+<button class="action secondary" type="button" onclick="renderRiderLedger()">متابعة المندوبين وكشف الحساب وجرد الطلبات</button>
 <button class="action secondary" type="button" onclick="renderShopVisits()">قائمة زيارات المحلات</button>
 <div id="shopVisitPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h3>إضافة محل لقائمة الزيارات</h3><form id="shopVisitForm" onsubmit="addShopVisit(event)"><label for="visitShopName">اسم المحل</label><input id="visitShopName" required maxlength="120" placeholder="اسم المحل"><label for="visitShopPhone">رقم الهاتف (اختياري)</label><input id="visitShopPhone" inputmode="tel" maxlength="11" placeholder="01xxxxxxxxx"><label for="visitShopType">نوع النشاط</label><input id="visitShopType" maxlength="100" placeholder="مثال: سوبر ماركت أو صيدلية"><label for="visitShopAddress">العنوان</label><input id="visitShopAddress" maxlength="300" placeholder="المنطقة والشارع"><button class="action" type="submit">إضافة إلى قائمة الزيارات</button></form><div id="shopVisitList" class="small" style="margin-top:12px"></div></div>
-<div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُقرأ مباشرة من شرائح التسعير النشطة المحفوظة في قاعدة البيانات، ويستخدمها العميل عند حساب المسافة.</p><button class="action secondary" type="button" onclick="renderAdminPricing()">تحديث وعرض التسعيرة المحفوظة</button><div id="tariffStatus" class="small"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
+<div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُقرأ مباشرة من شرائح التسعير النشطة المحفوظة في قاعدة البيانات، ويستخدمها العميل عند حساب المسافة.</p><button class="action secondary" type="button" onclick="renderAdminPricing()">تحديث وعرض التسعيرة المحفوظة</button><div id="tariffStatus" class="small"></div></div><div id="riderLedgerPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h2>متابعة المندوبين وكشف الحساب</h2><p class="small">نصيب المندوب 90% ونصيب الإدارة 10% من أجرة التوصيل فقط. الطلبات الملغاة لا تُحتسب.</p><div id="riderLedgerContent"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
 </div>
 </section>
 </main>
@@ -366,6 +367,66 @@ async function rejectShopVisit(visitId){
  if(!confirm('حذف هذا المحل من قائمة الزيارات؟ لن نحذف سجل المحل أو أي طلبات.'))return;
  try{await requireAdminSession();await sbRequest('shop_visits?id=eq.'+encodeURIComponent(visitId),'DELETE');await renderShopVisits();}
  catch(e){alert('تعذر الحذف: '+(e.message||'خطأ في الاتصال'));}
+}
+
+
+async function renderRiderLedger(){
+ const panel=document.getElementById('riderLedgerPanel'),box=document.getElementById('riderLedgerContent');
+ if(!panel||!box)return;
+ panel.style.display='block';box.textContent='جارٍ تحميل بيانات المندوبين والطلبات...';
+ try{
+  await requireAdminSession();
+  const [riders,orders,payouts]=await Promise.all([
+   sbRequest('riders?select=id,rider_code,full_name,phone,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),
+   sbRequest('orders?select=id,customer_name,customer_phone,shop_name,delivery_address,status,total_amount,delivery_fee,rider_id,rider_code,assigned_at,delivered_at,created_at&order=created_at.desc'),
+   sbRequest('rider_payouts?select=id,rider_id,amount,payment_method,reference,notes,paid_at&order=paid_at.desc')
+  ]);
+  const money=v=>(Number(v)||0).toFixed(2)+' جنيه';
+  const done=s=>['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed'].includes(String(s||'').trim().toLowerCase());
+  const cancelled=s=>['ملغي','ملغى','ملغية','cancelled','canceled'].includes(String(s||'').trim().toLowerCase());
+  const assigned=orders.filter(o=>o.rider_id);
+  const delivered=assigned.filter(o=>done(o.status));
+  const cancelledOrders=assigned.filter(o=>cancelled(o.status));
+  const sum=(arr,key)=>arr.reduce((a,x)=>a+(Number(x[key])||0),0);
+  let html='<div class="record"><b>إجمالي المندوبين:</b> '+riders.length+' — <b>الطلبات المسندة:</b> '+assigned.length+' — <b>تم التسليم:</b> '+delivered.length+' — <b>ملغاة:</b> '+cancelledOrders.length+'</div>';
+  html+='<h3>كشف حساب وجرد كل مندوب</h3>';
+  html+=riders.map(r=>{
+   const ro=orders.filter(o=>o.rider_id===r.id),completed=ro.filter(o=>done(o.status)),cancelledRows=ro.filter(o=>cancelled(o.status));
+   const fees=sum(completed,'delivery_fee'),earned=sum(completed,'rider_share'),paid=sum(payouts.filter(p=>p.rider_id===r.id),'amount');
+   const share=completed.reduce((a,o)=>a+Math.round((Number(o.delivery_fee)||0)*90)/100,0);
+   const remaining=Math.max(0,share-paid);
+   return '<div class="record"><h3>'+escapeText(r.full_name||'مندوب')+' — '+escapeText(r.rider_code||'بانتظار الكود')+'</h3><b>الهاتف:</b> '+escapeText(r.phone||'—')+'<br><b>المركبة:</b> '+escapeText(({bicycle:'عجلة',motorcycle:'موتوسيكل',car:'سيارة'})[r.vehicle_type]||r.vehicle_type||'—')+' '+escapeText(r.vehicle_details||'')+'<br><b>اللوحة:</b> '+escapeText(r.plate_number||'—')+'<br><b>حالة الحساب:</b> '+escapeText(r.approval_status||'—')+' — <b>التواجد:</b> '+(r.is_available?'متاح':'غير متاح')+'<hr><b>إجمالي الطلبات:</b> '+ro.length+' — <b>مكتملة:</b> '+completed.length+' — <b>ملغاة:</b> '+cancelledRows.length+'<br><b>إجمالي أجرة التوصيل للطلبات المكتملة:</b> '+money(fees)+'<br><b>مستحق المندوب (90%):</b> '+money(share)+'<br><b>نصيب الإدارة (10%):</b> '+money(fees-share)+'<br><b>المدفوع للمندوب:</b> '+money(paid)+'<br><b>المتبقي للمندوب:</b> '+money(remaining)+'<form class="form" style="padding:8px 0" onsubmit="recordRiderPayout(event,'+JSON.stringify(r.id)+')"><label>تسجيل دفعة للمندوب</label><input name="amount" type="number" min="0.01" step="0.01" max="'+remaining.toFixed(2)+'" placeholder="المبلغ المدفوع" required><input name="method" maxlength="60" placeholder="طريقة الدفع (نقدي / تحويل)"><input name="reference" maxlength="120" placeholder="رقم مرجع التحويل (اختياري)"><input name="notes" maxlength="250" placeholder="ملاحظات (اختياري)"><button class="action" type="submit">حفظ الدفعة</button></form><details><summary>تفاصيل طلبات المندوب</summary>'+(ro.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>المحل: '+escapeText(o.shop_name||'—')+'<br>الحالة: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>حصة المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+'<br>التاريخ: '+escapeText(o.created_at||'—')+'</div>').join('')||'<p>لا توجد طلبات مسندة لهذا المندوب.</p>')+'</details></div>';
+  }).join('')||'<p>لا يوجد مندوبون مسجلون حتى الآن.</p>';
+  html+='<h3>إسناد طلب إلى مندوب وتحديد أجرة التوصيل</h3>';
+  const unassigned=orders.filter(o=>!o.rider_id&&!cancelled(o.status));
+  html+=unassigned.map(o=>'<form class="record" onsubmit="assignOrderToRider(event,'+JSON.stringify(o.id)+')"><b>طلب #'+escapeText(o.id)+'</b> — '+escapeText(o.customer_name||'عميل')+'<br>المحل: '+escapeText(o.shop_name||'—')+'<br>الحالة: '+escapeText(o.status||'جديد')+'<label>اختيار المندوب</label><select name="rider_id" required><option value="">اختر مندوبًا</option>'+riders.filter(r=>r.approval_status==='approved').map(r=>'<option value="'+escapeText(r.id)+'">'+escapeText(r.rider_code||'')+' — '+escapeText(r.full_name)+'</option>').join('')+'</select><label>أجرة التوصيل بالجنيه</label><input name="fee" type="number" min="0" step="0.01" required placeholder="أدخل أجرة التوصيل"><button class="action" type="submit">إسناد الطلب وحفظ الأجرة</button></form>').join('')||'<p>لا توجد طلبات غير مسندة حاليًا.</p>';
+  html+='<h3>كل الطلبات وجرد حالتها</h3>'+orders.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>المندوب: '+escapeText(o.rider_code||'غير مسند')+'<br>الحالة: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+' — الإدارة 10%: '+money(done(o.status)?Number(o.delivery_fee)*.1:0)+'</div>').join('');
+  box.innerHTML=html;
+ }catch(e){box.textContent='تعذر تحميل كشف المندوبين: '+(e.message||'خطأ في الاتصال');}
+}
+async function assignOrderToRider(event,orderId){
+ event.preventDefault();
+ try{
+  await requireAdminSession();
+  const form=event.currentTarget,riderId=form.elements.rider_id.value,fee=Number(form.elements.fee.value);
+  if(!riderId||!Number.isFinite(fee)||fee<0)throw new Error('اختر المندوب واكتب أجرة صحيحة.');
+  const rider=await sbRequest('riders?select=id,rider_code,approval_status&id=eq.'+encodeURIComponent(riderId));
+  if(!rider.length||rider[0].approval_status!=='approved')throw new Error('لا يمكن إسناد الطلب إلا لمندوب معتمد.');
+  await sbRequest('orders?id=eq.'+encodeURIComponent(orderId),'PATCH',{rider_id:riderId,rider_code:rider[0].rider_code,delivery_fee:fee,assigned_at:new Date().toISOString()});
+  alert('تم إسناد الطلب وحفظ أجرة التوصيل.');
+  await renderRiderLedger();
+ }catch(e){alert('تعذر إسناد الطلب: '+(e.message||'خطأ'));}
+}
+async function recordRiderPayout(event,riderId){
+ event.preventDefault();
+ try{
+  await requireAdminSession();
+  const form=event.currentTarget,amount=Number(form.elements.amount.value);
+  if(!Number.isFinite(amount)||amount<=0)throw new Error('أدخل مبلغًا صحيحًا.');
+  await sbRequest('rider_payouts','POST',{rider_id:riderId,amount,payment_method:form.elements.method.value.trim()||null,reference:form.elements.reference.value.trim()||null,notes:form.elements.notes.value.trim()||null});
+  alert('تم تسجيل الدفعة في كشف حساب المندوب.');
+  await renderRiderLedger();
+ }catch(e){alert('تعذر تسجيل الدفعة: '+(e.message||'خطأ'));}
 }
 
 async function renderOrders(){const box=document.getElementById('adminData');box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);let cloud=[];let cloudError='';try{cloud=await sbRequest('orders?select=*&order=created_at.desc')}catch(e){cloudError=e.message||'تعذر الاتصال'}let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية أو لم يتم الربط.</p>');if(cloudError)html+='<p>ملاحظة الاتصال: '+escapeText(cloudError)+'</p>';box.innerHTML=html}
