@@ -62,6 +62,16 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 // طلبات التوصيل: نسخة محلية احتياطية، مع محاولة الإرسال إلى Supabase عند ربطه.
+// نغمة إشعار سفينة نوح: ثلاث نقرات إلكترونية قصيرة.
+let safinetAudioContext=null;
+function unlockSafinetAudio(){
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!safinetAudioContext)safinetAudioContext=new AC();if(safinetAudioContext.state==='suspended')safinetAudioContext.resume();}catch(e){}
+}
+document.addEventListener('pointerdown',unlockSafinetAudio,{once:true,passive:true});
+document.addEventListener('keydown',unlockSafinetAudio,{once:true});
+function playSafinetNotice(){
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!safinetAudioContext)safinetAudioContext=new AC();const ctx=safinetAudioContext;if(ctx.state==='suspended')ctx.resume();const now=ctx.currentTime;[880,1175,1480].forEach((freq,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),start=now+i*.16;osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.16,start+.018);gain.gain.exponentialRampToValueAtTime(.0001,start+.13);osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+.14);});}catch(e){}
+}
 function getLocalOrders(){try{return JSON.parse(localStorage.getItem('safinet_orders')||'[]')}catch(e){return []}}
 function setLocalOrders(rows){localStorage.setItem('safinet_orders',JSON.stringify(rows))}
 async function submitDeliveryOrder(event){
@@ -92,6 +102,7 @@ async function submitDeliveryOrder(event){
  feedback.innerHTML=remote
   ? '<b>تم إرسال الطلب إلى قاعدة البيانات بنجاح.</b><br>رقم المتابعة المحلي: '+escapeText(order.local_order_no)
   : '<b>تم حفظ الطلب على هذا الهاتف فقط.</b><br>رقم الطلب: '+escapeText(order.local_order_no)+'<br>لكي يظهر للمندوبين على هواتف أخرى يجب ربط قاعدة البيانات من الإدارة. '+escapeText(remoteMessage);
+ playSafinetNotice();
  showMyOrders();
 }
 async function shareApp(){
@@ -348,7 +359,7 @@ async function renderAdmin(){
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
-async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
+async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
 
 async function renderShopVisits(){
  const panel=document.getElementById('shopVisitPanel'),list=document.getElementById('shopVisitList');
@@ -387,6 +398,7 @@ async function acceptShopVisit(visitId,shopId){
   await requireAdminSession();
   await sbRequest('shops?id=eq.'+encodeURIComponent(shopId),'PATCH',{is_active:true,is_registered:true});
   await sbRequest('shop_visits?id=eq.'+encodeURIComponent(visitId),'DELETE');
+  playSafinetNotice();
   alert('تم نقل المحل إلى قائمة المحلات الظاهرة للعملاء.');
   await renderShopVisits();await renderAdmin();
  }catch(e){alert('تعذر نقل المحل: '+(e.message||'خطأ في الاتصال'));}
@@ -441,6 +453,7 @@ async function assignOrderToRider(event,orderId){
   const rider=await sbRequest('riders?select=id,rider_code,approval_status&id=eq.'+encodeURIComponent(riderId));
   if(!rider.length||rider[0].approval_status!=='approved')throw new Error('لا يمكن إسناد الطلب إلا لمندوب معتمد.');
   await sbRequest('orders?id=eq.'+encodeURIComponent(orderId),'PATCH',{rider_id:riderId,rider_code:rider[0].rider_code,delivery_fee:fee,assigned_at:new Date().toISOString()});
+  playSafinetNotice();
   alert('تم إسناد الطلب وحفظ أجرة التوصيل.');
   await renderRiderLedger();
  }catch(e){alert('تعذر إسناد الطلب: '+(e.message||'خطأ'));}
@@ -453,6 +466,7 @@ async function updateOrderStatus(event,orderId){
   const patch={status};
   if(status==='تم التسليم')patch.delivered_at=new Date().toISOString();
   await sbRequest('orders?id=eq.'+encodeURIComponent(orderId),'PATCH',patch);
+  playSafinetNotice();
   alert('تم تحديث حالة الطلب. سيُحتسب نصيب المندوب 90% فقط عند اختيار تم التسليم.');
   await renderRiderLedger();
  }catch(e){alert('تعذر تحديث حالة الطلب: '+(e.message||'خطأ'));}
@@ -464,6 +478,7 @@ async function recordRiderPayout(event,riderId){
   const form=event.currentTarget,amount=Number(form.elements.amount.value);
   if(!Number.isFinite(amount)||amount<=0)throw new Error('أدخل مبلغًا صحيحًا.');
   await sbRequest('rider_payouts','POST',{rider_id:riderId,amount,payment_method:form.elements.method.value.trim()||null,reference:form.elements.reference.value.trim()||null,notes:form.elements.notes.value.trim()||null});
+  playSafinetNotice();
   alert('تم تسجيل الدفعة في كشف حساب المندوب.');
   await renderRiderLedger();
  }catch(e){alert('تعذر تسجيل الدفعة: '+(e.message||'خطأ'));}
