@@ -1,4 +1,4 @@
-const CACHE_NAME = "safinet-shell-v8";
+const CACHE_NAME = "safinet-shell-v9";
 const APP_SHELL = ["/", "/manifest.json", "/icon.svg", "/safinet-noah-icon(1).png?v=6", "/home-screen.jpg.jpg", ];
 
 self.addEventListener("install", event => {
@@ -40,17 +40,15 @@ self.addEventListener("fetch", event => {
 
   if (["script", "style", "image", "font"].includes(request.destination)) {
     event.respondWith((async () => {
-      const cached = await caches.match(request);
-      if (cached) return cached;
       try {
         const response = await fetch(request);
         if (response && response.ok) {
           const cache = await caches.open(CACHE_NAME);
-          cache.put(request, response.clone());
+          await cache.put(request, response.clone());
         }
         return response;
       } catch (error) {
-        return Response.error();
+        return (await caches.match(request)) || Response.error();
       }
     })());
   }
