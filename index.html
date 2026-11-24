@@ -110,6 +110,20 @@ function showMyOrders(){
 
 </script>
 <meta name="theme-color" content="#123c63"><meta name="mobile-web-app-capable" content="yes"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="سفينة نوح">
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(error => {
+      console.warn("تعذر تفعيل وضع التطبيق:", error);
+    });
+  });
+}
+</script>
 </head>
 <body>
 <main class="app">
