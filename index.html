@@ -31,6 +31,24 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 .home-actions .action{margin:0;min-height:46px;width:100%}
 .home-footer{text-align:center;padding:12px 10px 18px;background:#fff;color:#17345d;line-height:1.8;font-size:15px}
 .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
+
+.customer-catalog{padding:14px;text-align:right}
+.customer-catalog-intro{background:linear-gradient(135deg,#073b91,#0879bd);color:#fff;border-radius:18px;padding:16px;margin:4px 0 14px;text-align:right}
+.customer-catalog-intro h2{color:#fff;margin:0 0 6px}
+.customer-catalog-intro p{margin:0;font-size:13px;opacity:.95}
+.category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+.category-tile{border:1px solid #d6e4f8;background:#f7faff;color:#123c63;border-radius:15px;padding:13px 9px;min-height:86px;text-align:center;font:inherit;cursor:pointer;box-shadow:0 3px 10px #123c630d}
+.category-tile strong{display:block;font-size:14px;margin:5px 0}
+.category-tile small{color:#60758f;font-size:11px}
+.category-tile.active{background:#fff2e5;border:2px solid #f47700;color:#7c3d00;box-shadow:0 5px 14px #f4770020}
+.category-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0}
+.category-toolbar h3{margin:0;color:#073b91;font-size:17px}
+.category-back{border:0;border-radius:20px;background:#e8f1ff;color:#073b91;padding:8px 12px;font-weight:bold}
+.shop-card{border:1px solid #d8e5f6;border-radius:16px;padding:13px;margin:10px 0;background:#fff;box-shadow:0 4px 14px #123c630d;text-align:right}
+.shop-card-title{font-size:16px;color:#073b91;font-weight:bold}
+.shop-card-meta{font-size:12px;color:#60758f;margin-top:5px}
+.catalog-empty{background:#f7faff;border:1px dashed #a9c4e8;border-radius:15px;padding:20px;text-align:center;color:#536b88;line-height:1.8}
+@media(min-width:420px){.category-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
@@ -430,11 +448,48 @@ async function loadCustomerCatalog(){
   renderCustomerCatalog();
  }catch(e){box.innerHTML='<p>تعذر تحميل قائمة المحلات من قاعدة البيانات. تأكد من اتصال التطبيق وصلاحية عرض المحلات والمنتجات.</p><p class="small">رسالة النظام: '+escapeText(e.message||'تعذر الاتصال')+'</p>';}
 }
+const CUSTOMER_CATEGORIES=[
+ {key:'market',icon:'🛒',name:'سوبر ماركت وبقالة',hint:'احتياجات البيت اليومية'},
+ {key:'food',icon:'🍔',name:'مطاعم ومأكولات',hint:'وجبات وأكلات متنوعة'},
+ {key:'cafe',icon:'☕',name:'كافيهات',hint:'مشروبات وجلسات'},
+ {key:'pharmacy',icon:'💊',name:'صيدليات',hint:'الأدوية والاحتياجات الصحية'},
+ {key:'clothes',icon:'👕',name:'ملابس وأحذية',hint:'ملابس وأحذية للجميع'},
+ {key:'sweets',icon:'🍰',name:'حلويات ومخبوزات',hint:'حلويات ومخبوزات طازجة'},
+ {key:'books',icon:'📚',name:'مكتبات وقرطاسية',hint:'أدوات مكتبية ومدرسية'},
+ {key:'electronics',icon:'📱',name:'موبايلات وإلكترونيات',hint:'أجهزة وإكسسوارات تقنية'},
+ {key:'malls',icon:'🏬',name:'مولات ومراكز تجارية',hint:'تسوق من أماكن متنوعة'},
+ {key:'butcher',icon:'🥩',name:'جزارة ولحوم',hint:'لحوم ومنتجاتها'},
+ {key:'gifts',icon:'🎁',name:'هدايا وإكسسوارات',hint:'هدايا ولمسات جميلة'},
+ {key:'review',icon:'📝',name:'تصنيف قيد المراجعة',hint:'لم يُحدد القسم بعد'}
+];
+let selectedCustomerCategory='all';
+function getCustomerCategory(activity){
+ const a=String(activity||'').trim().toLowerCase();
+ if(!a)return 'review';
+ if(a.includes('سوبر')||a.includes('بقال'))return 'market';
+ if(a.includes('صيدل'))return 'pharmacy';
+ if(a.includes('كافيه'))return a.includes('مطاعم')?'review':'cafe';
+ if(a.includes('ملابس')||a.includes('أحذية')||a.includes('احذية'))return 'clothes';
+ if(a.includes('حلويات')||a.includes('مخبوزات')||a.includes('مخبز'))return a.includes('مطاعم')?'review':'sweets';
+ if(a.includes('مكتبات')||a.includes('قرطاسية'))return 'books';
+ if(a.includes('موبايل')||a.includes('إلكترونيات')||a.includes('الكترونيات'))return 'electronics';
+ if(a.includes('مولات')||a.includes('مراكز تجارية'))return 'malls';
+ if(a.includes('جزارة')||a.includes('لحوم'))return 'butcher';
+ if(a.includes('هدايا')||a.includes('إكسسوارات')||a.includes('اكسسوارات'))return 'gifts';
+ if(a.includes('مطاعم')||a.includes('مشويات')||a.includes('مندي')||a.includes('بيتزا')||a.includes('فطائر')||a.includes('مأكولات')||a.includes('سورية'))return 'food';
+ return 'review';
+}
 function renderCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
- if(!customerCatalog.length){box.innerHTML='<p>لا توجد محلات معتمدة متاحة حاليًا داخل مدينة السادات.</p>';return;}
- box.innerHTML=customerCatalog.map(shop=>'<div class="record"><b>🏪 '+escapeText(shop.name)+'</b><br><small>'+escapeText(shop.address||'العنوان غير مضاف')+'</small><div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"><span style="display:inline-block;background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="display:inline-block;background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
+ const counts={};CUSTOMER_CATEGORIES.forEach(c=>counts[c.key]=0);
+ customerCatalog.forEach(shop=>{const key=getCustomerCategory(shop.activity_type);counts[key]=(counts[key]||0)+1;});
+ const selected=CUSTOMER_CATEGORIES.find(c=>c.key===selectedCustomerCategory);
+ const visible=selectedCustomerCategory==='all'?customerCatalog:customerCatalog.filter(shop=>getCustomerCategory(shop.activity_type)===selectedCustomerCategory);
+ const categoryButtons='<button type="button" class="category-tile '+(selectedCustomerCategory==='all'?'active':'')+'" onclick="selectCustomerCategory(\'all\')"><span style="font-size:25px">🧺</span><strong>كل المحلات</strong><small>'+customerCatalog.length+' محل</small></button>'+CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile '+(selectedCustomerCategory===c.key?'active':'')+'" onclick="selectCustomerCategory(\''+c.key+'\')"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
+ const shopCards=visible.map(shop=>'<div class="shop-card"><div class="shop-card-title">🏪 '+escapeText(shop.name)+'</div><div class="shop-card-meta">'+escapeText(shop.address||'العنوان غير مضاف')+' · '+escapeText(shop.activity_type||'النشاط غير محدد')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:9px 0"><span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
+ box.innerHTML='<div class="customer-catalog-intro"><h2>تسوق من محلات السادات</h2><p>اختار القسم المناسب، تصفح المحلات، وأضف احتياجاتك إلى السلة بسهولة.</p></div><div class="category-grid">'+categoryButtons+'</div><div class="category-toolbar"><h3>'+(selectedCustomerCategory==='all'?'كل المحلات':selected.icon+' '+selected.name)+'</h3>'+(selectedCustomerCategory!=='all'?'<button class="category-back" type="button" onclick="selectCustomerCategory(\'all\')">عرض كل الأقسام</button>':'')+'</div>'+(visible.length?shopCards:'<div class="catalog-empty">لا توجد محلات معتمدة في هذا القسم حاليًا.<br><small>هنضيف المحلات هنا بمجرد اعتمادها وتحديد نشاطها.</small></div>');
 }
+function selectCustomerCategory(key){selectedCustomerCategory=key;renderCustomerCatalog();}
 function addCustomerProduct(shopId,productId){
  if(customerCart.length&&customerCart.some(x=>String(x.shopId)!==String(shopId))){alert('كل طلب يكون من محل واحد. أكمل الطلب الحالي أولاً، وبعدها اطلب من محل آخر.');return;}
  const shop=customerCatalog.find(x=>String(x.id)===String(shopId));const product=shop&&(shop.products||[]).find(x=>String(x.id)===String(productId));if(!shop||!product)return;
