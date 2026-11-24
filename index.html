@@ -177,6 +177,8 @@ function showMyOrders(){
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>إعداد اتصال قاعدة البيانات ومتابعة التسجيلات والطلبات.</p>
 <button class="action secondary" onclick="renderAdmin()">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" onclick="renderOrders()">عرض الطلبات</button>
+<button class="action secondary" type="button" onclick="renderShopVisits()">قائمة زيارات المحلات</button>
+<div id="shopVisitPanel" class="notice" style="display:none;margin-top:14px;text-align:right"><h3>إضافة محل لقائمة الزيارات</h3><form id="shopVisitForm" onsubmit="addShopVisit(event)"><label for="visitShopName">اسم المحل</label><input id="visitShopName" required maxlength="120" placeholder="اسم المحل"><label for="visitShopPhone">رقم الهاتف (اختياري)</label><input id="visitShopPhone" inputmode="tel" maxlength="11" placeholder="01xxxxxxxxx"><label for="visitShopType">نوع النشاط</label><input id="visitShopType" maxlength="100" placeholder="مثال: سوبر ماركت أو صيدلية"><label for="visitShopAddress">العنوان</label><input id="visitShopAddress" maxlength="300" placeholder="المنطقة والشارع"><button class="action" type="submit">إضافة إلى قائمة الزيارات</button></form><div id="shopVisitList" class="small" style="margin-top:12px"></div></div>
 <div class="notice" style="margin-top:14px;border:1px solid #9bbcf0;border-radius:16px"><h2>قائمة تسعيرة التوصيل</h2><p class="small">تُقرأ مباشرة من شرائح التسعير النشطة المحفوظة في قاعدة البيانات، ويستخدمها العميل عند حساب المسافة.</p><button class="action secondary" type="button" onclick="renderAdminPricing()">تحديث وعرض التسعيرة المحفوظة</button><div id="tariffStatus" class="small"></div></div><div id="adminData" class="small" style="text-align:right;margin-top:16px"></div></div>
 </div>
 </section>
@@ -237,14 +239,62 @@ async function renderAdmin(){
  try{
   await requireAdminSession();
   box.textContent='جارٍ تحميل التسجيلات والمحلات...';
-  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active&order=shop_name.asc')]);
+  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active,is_registered&order=shop_name.asc')]);
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
   html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
-  html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.name)+'</b><br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'نشط':'بانتظار المراجعة / غير نشط')+(x.is_active?'':'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>')+'</div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
+  html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.name)+'</b><br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'</div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
 async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});alert('تم اعتماد المحل.');renderAdmin()}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
+
+async function renderShopVisits(){
+ const panel=document.getElementById('shopVisitPanel'),list=document.getElementById('shopVisitList');
+ if(!panel||!list)return;
+ panel.style.display='block';list.textContent='جارٍ تحميل قائمة الزيارات...';
+ try{
+  await requireAdminSession();
+  const visits=await sbRequest('shop_visits?select=id,shop_id,visit_date,visit_status,shop:shops(shop_name,activity_type,address,phone)&order=created_at.desc');
+  list.innerHTML=visits.length?visits.map(v=>{
+   const s=v.shop||{};
+   return '<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+'<br><small>الحالة: ضمن قائمة الزيارات</small><div class="row" style="gap:8px;margin-top:10px"><button class="action" type="button" onclick="acceptShopVisit('+Number(v.id)+','+Number(v.shop_id)+')">✓ موافق — إظهار للعملاء</button><button class="action secondary" type="button" onclick="rejectShopVisit('+Number(v.id)+')">✕ رفض — حذف من الزيارات</button></div></div>';
+  }).join(''):'<p>قائمة الزيارات فارغة. أضف المحلات التي تريد زيارتها من النموذج أعلاه.</p>';
+ }catch(e){list.textContent='تعذر تحميل قائمة الزيارات: '+(e.message||'خطأ في الاتصال');}
+}
+async function addShopVisit(event){
+ event.preventDefault();
+ const form=event.currentTarget;
+ const name=document.getElementById('visitShopName').value.trim();
+ const phone=document.getElementById('visitShopPhone').value.trim();
+ const activity=document.getElementById('visitShopType').value.trim();
+ const address=document.getElementById('visitShopAddress').value.trim();
+ if(phone&&!/^01[0-9]{9}$/.test(phone)){alert('رقم الهاتف يجب أن يكون 11 رقمًا ويبدأ بـ 01.');return;}
+ try{
+  await requireAdminSession();
+  const created=await sbRequest('shops','POST',{shop_name:name,phone:phone||null,activity_type:activity||null,address:address||null,is_registered:false,is_active:false,visit_status:'لم تتم الزيارة'});
+  const shop=created&&created[0];
+  if(!shop||!shop.id)throw new Error('لم يصل رقم المحل من قاعدة البيانات.');
+  try{await sbRequest('shop_visits','POST',{shop_id:shop.id,visit_status:'لم تتم الزيارة'});}
+  catch(e){await sbRequest('shops?id=eq.'+encodeURIComponent(shop.id),'DELETE');throw e;}
+  form.reset();await renderShopVisits();
+ }catch(e){alert('تعذر إضافة المحل: '+(e.message||'خطأ في الاتصال'));}
+}
+async function acceptShopVisit(visitId,shopId){
+ if(!confirm('تأكيد موافقة المحل؟ سيظهر في قائمة المحلات للعملاء.'))return;
+ try{
+  await requireAdminSession();
+  await sbRequest('shops?id=eq.'+encodeURIComponent(shopId),'PATCH',{is_active:true,is_registered:true});
+  await sbRequest('shop_visits?id=eq.'+encodeURIComponent(visitId),'DELETE');
+  alert('تم نقل المحل إلى قائمة المحلات الظاهرة للعملاء.');
+  await renderShopVisits();await renderAdmin();
+ }catch(e){alert('تعذر نقل المحل: '+(e.message||'خطأ في الاتصال'));}
+}
+async function rejectShopVisit(visitId){
+ if(!confirm('حذف هذا المحل من قائمة الزيارات؟ لن نحذف سجل المحل أو أي طلبات.'))return;
+ try{await requireAdminSession();await sbRequest('shop_visits?id=eq.'+encodeURIComponent(visitId),'DELETE');await renderShopVisits();}
+ catch(e){alert('تعذر الحذف: '+(e.message||'خطأ في الاتصال'));}
+}
+
 async function renderOrders(){const box=document.getElementById('adminData');box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);let cloud=[];let cloudError='';try{cloud=await sbRequest('orders?select=*&order=created_at.desc')}catch(e){cloudError=e.message||'تعذر الاتصال'}let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية أو لم يتم الربط.</p>');if(cloudError)html+='<p>ملاحظة الاتصال: '+escapeText(cloudError)+'</p>';box.innerHTML=html}
 async function registerShop(event){
  event.preventDefault();
@@ -371,7 +421,7 @@ async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
  try{
-  const shops=await sbRequest('shops?select=id,name:shop_name,address&is_active=eq.true&order=shop_name.asc');
+  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type&is_active=eq.true&order=shop_name.asc');
   customerCatalog=[];
   for(const shop of shops){
    const products=await sbRequest('products?select=id,name,price,description&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
@@ -383,7 +433,7 @@ async function loadCustomerCatalog(){
 function renderCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  if(!customerCatalog.length){box.innerHTML='<p>لا توجد محلات معتمدة متاحة حاليًا داخل مدينة السادات.</p>';return;}
- box.innerHTML=customerCatalog.map(shop=>'<div class="record"><b>🏪 '+escapeText(shop.name)+'</b><br><small>'+escapeText(shop.address||'')+'</small>'+(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join('')+'</div>').join('');
+ box.innerHTML=customerCatalog.map(shop=>'<div class="record"><b>🏪 '+escapeText(shop.name)+'</b><br><small>'+escapeText(shop.address||'العنوان غير مضاف')+'</small><div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"><span style="display:inline-block;background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="display:inline-block;background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
 }
 function addCustomerProduct(shopId,productId){
  if(customerCart.length&&customerCart.some(x=>String(x.shopId)!==String(shopId))){alert('كل طلب يكون من محل واحد. أكمل الطلب الحالي أولاً، وبعدها اطلب من محل آخر.');return;}
