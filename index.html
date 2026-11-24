@@ -148,15 +148,22 @@ function showMyOrders(){
 <form class="form" id="driverForm" onsubmit="registerUser(event,'driver')">
 <label for="riderName">الاسم الرباعي بالكامل</label><input id="riderName" required minlength="3" maxlength="120" autocomplete="name" placeholder="اكتب اسمك كما هو في البطاقة">
 <label for="riderPhone">رقم الموبايل الأساسي (11 رقم)</label><input id="riderPhone" required inputmode="numeric" pattern="01[0-9]{9}" maxlength="11" autocomplete="tel" placeholder="01xxxxxxxxx">
-<label for="riderVehicle">وسيلة التوصيل</label><select id="riderVehicle" required onchange="toggleRiderVehicleFields()"><option value="">اختر وسيلة التوصيل</option><option value="bicycle">عجلة</option><option value="motorcycle">موتوسيكل</option></select>
+<label for="riderNationalId">الرقم القومي (14 رقم)</label><input id="riderNationalId" required inputmode="numeric" pattern="[0-9]{14}" maxlength="14" placeholder="اكتب الرقم القومي كما هو في البطاقة">
+<label>صورة البطاقة الشخصية — الوجه</label><input id="riderIdFront" type="file" accept="image/jpeg,image/png" required>
+<label>صورة البطاقة الشخصية — الظهر</label><input id="riderIdBack" type="file" accept="image/jpeg,image/png" required>
+<label for="riderVehicle">وسيلة التوصيل</label><select id="riderVehicle" required onchange="toggleRiderVehicleFields()"><option value="">اختر وسيلة التوصيل</option><option value="bicycle">عجلة</option><option value="motorcycle">موتوسيكل</option><option value="car">سيارة</option></select>
 <div id="vehicleDetailsFields">
 <label id="riderVehicleDetailsLabel" for="riderVehicleDetails">نوع العجلة وموديلها</label><input id="riderVehicleDetails" required minlength="2" maxlength="120" placeholder="مثال: عجلة جبلي 26 بوصة">
-<small class="small">اكتب وصفًا واضحًا للمركبة حتى يسهل على الإدارة مراجعة بياناتك.</small>
+<small class="small">اكتب النوع والموديل بوضوح.</small>
 </div>
-<div id="motorcycleFields" style="display:none">
-<label for="riderPlate">رقم لوحة الموتوسيكل</label><input id="riderPlate" maxlength="30" placeholder="اكتب رقم اللوحة كما هو">
+<div id="licensedVehicleFields" style="display:none">
+<label for="riderPlate">رقم لوحة المركبة</label><input id="riderPlate" maxlength="30" placeholder="اكتب رقم اللوحة كما هو">
+<label>صورة رخصة القيادة</label><input id="riderDrivingLicense" type="file" accept="image/jpeg,image/png">
+<label>صورة رخصة المركبة</label><input id="riderVehicleLicense" type="file" accept="image/jpeg,image/png">
 </div>
+<label>صورة المركبة (عجلة أو موتوسيكل أو سيارة)</label><input id="riderVehiclePhoto" type="file" accept="image/jpeg,image/png" required>
 <label for="riderAddress">منطقة السكن والعمل داخل مدينة السادات</label><input id="riderAddress" required minlength="3" maxlength="300" autocomplete="street-address" placeholder="الحي أو المنطقة والشارع وأقرب علامة مميزة">
+<div class="record"><small>الصور والرقم القومي تُحفظ في مساحة خاصة ولا تظهر للعملاء. الحد الأقصى لكل صورة 10 ميجابايت. لا ترسل صورًا غير واضحة.</small></div>
 <div class="record"><b>مهم قبل التسجيل</b><br><small>اكتب بيانات صحيحة ويمكن للإدارة التواصل معك عليها. التسجيل لا يعني قبولك تلقائيًا؛ الحساب يظل قيد المراجعة حتى اعتماد الإدارة.</small></div>
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
@@ -236,25 +243,68 @@ function getSB(){return {url:(localStorage.getItem('safinet_sb_url')||'https://e
 function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);sbClient=null;initSupabaseAuth();document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
 async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');const token=adminSession&&adminSession.access_token?adminSession.access_token:c.key;const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
 async function testSupabase(){const box=document.getElementById('connectionStatus'),c=getSB();box.textContent='جارٍ اختبار اتصال خدمة تسجيل الدخول...';if(!c.url||!c.key){box.textContent='أدخل رابط المشروع والمفتاح العام أولاً.';return}try{const r=await fetch(c.url+'/auth/v1/settings',{headers:{apikey:c.key}});if(!r.ok)throw new Error('رمز الاستجابة '+r.status);box.textContent='اتصال Supabase Auth ناجح. صلاحية عرض بيانات الإدارة تُختبر بعد تسجيل الدخول.'}catch(e){box.textContent='فشل الاتصال: '+(e.message||'تعذر الوصول إلى Supabase Auth')}}
-function toggleRiderVehicleFields(){const motorcycle=document.getElementById('riderVehicle').value==='motorcycle';document.getElementById('motorcycleFields').style.display=motorcycle?'block':'none';document.getElementById('riderVehicleDetailsLabel').textContent=motorcycle?'نوع الموتوسيكل وموديله':'نوع العجلة وموديلها';document.getElementById('riderVehicleDetails').placeholder=motorcycle?'مثال: هوجن 150':'مثال: عجلة جبلي 26 بوصة';document.getElementById('riderPlate').required=motorcycle;}
+function toggleRiderVehicleFields(){const v=document.getElementById('riderVehicle').value,licensed=v==='motorcycle'||v==='car';document.getElementById('licensedVehicleFields').style.display=licensed?'block':'none';document.getElementById('riderVehicleDetailsLabel').textContent=v==='car'?'ماركة السيارة وموديلها':v==='motorcycle'?'نوع الموتوسيكل وموديله':'نوع العجلة وموديلها';document.getElementById('riderVehicleDetails').placeholder=v==='car'?'مثال: هيونداي فيرنا 2015':v==='motorcycle'?'مثال: هوجن 150':'مثال: عجلة جبلي 26 بوصة';document.getElementById('riderPlate').required=licensed;document.getElementById('riderDrivingLicense').required=licensed;document.getElementById('riderVehicleLicense').required=licensed;}
+async function uploadRiderDocument(uid,registrationId,key,file){
+ if(!file) return null;
+ if(!['image/jpeg','image/png'].includes(file.type)) throw new Error('يُسمح بصور JPG أو PNG فقط.');
+ if(file.size>10*1024*1024) throw new Error('حجم كل صورة يجب ألا يتجاوز 10 ميجابايت.');
+ const ext=file.type==='image/png'?'png':'jpg';
+ const path=uid+'/'+registrationId+'/'+key+'.'+ext;
+ const {error}=await sbClient.storage.from('rider-private-documents').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+ if(error) throw error;
+ return path;
+}
 async function registerUser(event,type){
  event.preventDefault();
- const form=event.currentTarget;
- const box=document.getElementById('riderStatus');
+ const form=event.currentTarget,box=document.getElementById('riderStatus');
  const fullName=document.getElementById('riderName').value.trim();
  const phone=document.getElementById('riderPhone').value.trim();
+ const nationalId=document.getElementById('riderNationalId').value.trim();
  const vehicle=document.getElementById('riderVehicle').value;
  const address=document.getElementById('riderAddress').value.trim();
  const details=document.getElementById('riderVehicleDetails').value.trim();
  const plate=document.getElementById('riderPlate').value.trim();
- if(fullName.split(/\\s+/).filter(Boolean).length<4||!/^01[0-9]{9}$/.test(phone)||!vehicle||address.length<3||details.length<2||(vehicle==='motorcycle'&&!plate)){box.textContent='اكتب الاسم الرباعي، وتأكد من رقم الموبايل والمنطقة وتفاصيل المركبة. رقم اللوحة مطلوب للموتوسيكل.';return}
- box.textContent='جارٍ إرسال طلب تسجيل المندوب...';
+ const file=id=>document.getElementById(id).files[0]||null;
+ const idFront=file('riderIdFront'),idBack=file('riderIdBack'),vehiclePhoto=file('riderVehiclePhoto');
+ const drivingLicense=file('riderDrivingLicense'),vehicleLicense=file('riderVehicleLicense');
+ const licensed=vehicle==='motorcycle'||vehicle==='car';
+ if(fullName.split(/\s+/).filter(Boolean).length<4||!/^01[0-9]{9}$/.test(phone)||!/^\d{14}$/.test(nationalId)||!vehicle||address.length<3||details.length<2||!idFront||!idBack||!vehiclePhoto||(licensed&&(!plate||!drivingLicense||!vehicleLicense))){
+  box.textContent='استكمل الاسم الرباعي والرقم القومي وصور البطاقة والمركبة، وبيانات الرخصة واللوحة للموتوسيكل أو السيارة.';return;
+ }
+ if(!initSupabaseAuth()){box.textContent='تعذر الاتصال بخدمة التسجيل الآمن. حاول مرة أخرى.';return;}
+ box.textContent='جارٍ تأمين جلسة التسجيل ورفع المستندات الخاصة...';
  try{
-  await sbRequest('rpc/register_rider','POST',{p_full_name:fullName,p_phone:phone,p_address:address,p_vehicle_type:vehicle,p_vehicle_details:details||null,p_plate_number:plate||null});
+  let {data:{session},error:sessionError}=await sbClient.auth.getSession();
+  if(sessionError) throw sessionError;
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin') throw new Error('افتح نموذج التسجيل من نافذة خاصة أو سجّل الخروج من حساب الإدارة أولاً.');
+  if(!session){
+   const {data,error}=await sbClient.auth.signInAnonymously();
+   if(error) throw new Error('تعذر بدء جلسة التسجيل. قد يحتاج تفعيل التسجيل المجهول من إعدادات Supabase Auth. '+error.message);
+   session=data.session;
+  }
+  if(!session||!session.user) throw new Error('لم يتم إنشاء جلسة آمنة للمندوب.');
+  const uid=session.user.id,registrationId=crypto.randomUUID();
+  const [idFrontPath,idBackPath,vehiclePhotoPath,drivingLicensePath,vehicleLicensePath]=await Promise.all([
+   uploadRiderDocument(uid,registrationId,'national-id-front',idFront),
+   uploadRiderDocument(uid,registrationId,'national-id-back',idBack),
+   uploadRiderDocument(uid,registrationId,'vehicle-photo',vehiclePhoto),
+   licensed?uploadRiderDocument(uid,registrationId,'driving-license',drivingLicense):Promise.resolve(null),
+   licensed?uploadRiderDocument(uid,registrationId,'vehicle-license',vehicleLicense):Promise.resolve(null)
+  ]);
+  const {error}=await sbClient.rpc('register_rider_secure',{
+   p_full_name:fullName,p_phone:phone,p_address:address,p_vehicle_type:vehicle,
+   p_vehicle_details:details,p_plate_number:licensed?plate:null,p_national_id:nationalId,
+   p_national_id_front_path:idFrontPath,p_national_id_back_path:idBackPath,
+   p_vehicle_photo_path:vehiclePhotoPath,p_driving_license_front_path:drivingLicensePath,
+   p_vehicle_license_front_path:vehicleLicensePath
+  });
+  if(error) throw error;
   form.reset();toggleRiderVehicleFields();
-  box.textContent='تم إرسال طلبك بنجاح إلى الإدارة. حسابك قيد المراجعة ولن تستقبل طلبات قبل الاعتماد.';
- }catch(e){box.textContent='لم يتم إرسال التسجيل: '+(e.message||'تعذر الاتصال بقاعدة البيانات')+'. لم يتم تسجيله كطلب ناجح.'}
+  box.textContent='تم إرسال طلبك ومستنداتك الخاصة بنجاح. حسابك قيد مراجعة الإدارة ولن تستقبل طلبات قبل الاعتماد.';
+ }catch(e){box.textContent='لم يتم إكمال التسجيل: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد الحساب.';}
 }
+function riderDocumentButton(label,path){if(!path)return '';return '<button class="action secondary" type="button" style="margin:4px" onclick="openRiderDocument(\''+encodeURIComponent(path)+'\')">'+escapeText(label)+'</button>';}
+async function openRiderDocument(encodedPath){try{await requireAdminSession();const path=decodeURIComponent(encodedPath);const {data,error}=await sbClient.storage.from('rider-private-documents').createSignedUrl(path,120);if(error)throw error;window.open(data.signedUrl,'_blank','noopener');}catch(e){alert('تعذر فتح المستند: '+(e.message||'تحقق من صلاحية الإدارة'));}}
 async function renderAdmin(){
  const box=document.getElementById('adminData');
  if(!box){alert('تعذر العثور على مساحة عرض بيانات الإدارة.');return;}
@@ -262,9 +312,9 @@ async function renderAdmin(){
  try{
   await requireAdminSession();
   box.textContent='جارٍ تحميل التسجيلات والمحلات...';
-  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active,is_registered&order=shop_name.asc')]);
+  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,national_id,national_id_front_path,national_id_back_path,vehicle_photo_path,driving_license_front_path,vehicle_license_front_path,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,name:shop_name,address,is_active,is_registered&order=shop_name.asc')]);
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
-  html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
+  html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
   html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.name)+'</b><br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'</div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
