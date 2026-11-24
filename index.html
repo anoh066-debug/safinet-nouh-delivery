@@ -58,6 +58,10 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 .shop-card-meta{font-size:12px;color:#60758f;margin-top:5px}
 .catalog-empty{background:#f7faff;border:1px dashed #a9c4e8;border-radius:15px;padding:20px;text-align:center;color:#536b88;line-height:1.8}
 @media(min-width:420px){.category-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* رسالة ترحيب سفينة نوح عند فتح التطبيق */
+#welcomeGreeting{position:fixed;z-index:99999;top:18px;left:50%;transform:translate(-50%,-12px);width:calc(100% - 32px);max-width:440px;padding:15px 18px;border-radius:16px;background:linear-gradient(135deg,#0756ad,#087fbd);color:#fff;text-align:center;font-weight:800;font-size:18px;line-height:1.6;box-shadow:0 8px 26px rgba(0,0,0,.24);opacity:0;visibility:hidden;transition:opacity .35s ease,transform .35s ease,visibility .35s}
+#welcomeGreeting.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
@@ -731,6 +735,14 @@ async function renderOrders(){
  }).catch(e=>{box.textContent='تعذر تحميل الطلبات: '+(e.message||'تعذر الاتصال');});
 }
 window.addEventListener('load',()=>{loadDeliveryPricing().catch(()=>{});});
+function showSafinetWelcome(){
+ let box=document.getElementById('welcomeGreeting');
+ if(!box){box=document.createElement('div');box.id='welcomeGreeting';box.setAttribute('role','status');box.setAttribute('aria-live','polite');box.textContent='سفينة نوح دليفري ترحب بكم ❤️';document.body.appendChild(box);}
+ box.classList.remove('show');void box.offsetWidth;box.classList.add('show');
+ clearTimeout(window.safinetWelcomeTimer);window.safinetWelcomeTimer=setTimeout(()=>box.classList.remove('show'),4200);
+}
+window.addEventListener('load',()=>{setTimeout(showSafinetWelcome,450);});
+
 
 </script>
 </body>
