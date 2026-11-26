@@ -930,7 +930,8 @@ async function sortCustomerShopsByNearest(){
   customerSortByDistance=true;
   renderCustomerCatalog();
   const known=customerCatalog.filter(x=>Number.isFinite(x.distanceKm)).length;
-  if(status)status.textContent='تم ترتيب المحلات حسب الأقرب لموقعك. المسافات تقريبية بخط مستقيم، وتم تحديد مواقع '+known+' من '+customerCatalog.length+' محل.';
+  const resultStatus=document.getElementById('shopDistanceStatus');
+  if(resultStatus)resultStatus.textContent='تم ترتيب المحلات حسب الأقرب لموقعك. المسافات تقريبية بخط مستقيم، وتم تحديد مواقع '+known+' من '+customerCatalog.length+' محل.';
  },err=>{
   if(status)status.textContent=err&&err.code===1?'لم تسمح بالوصول إلى موقعك. فعّل إذن الموقع للتطبيق ثم حاول مرة أخرى.':'تعذر تحديد موقعك الآن. تأكد من تشغيل GPS والإنترنت ثم حاول مرة أخرى.';
  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
