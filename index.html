@@ -1004,6 +1004,7 @@ async function saveDeliveryTariff(id){
   await requireAdminSession();
   const min=Number(document.getElementById('tariffMin-'+id).value),max=Number(document.getElementById('tariffMax-'+id).value),fee=Number(document.getElementById('tariffFee-'+id).value);
   if(!Number.isFinite(min)||!Number.isFinite(max)||!Number.isFinite(fee)||min<0||max<=min||fee<0)throw new Error('راجع المسافة والسعر. لازم تكون المسافة النهائية أكبر من البداية والسعر لا يقل عن صفر.');
+  if(deliveryPricing.some(x=>x.id!==Number(id)&&min<x.max&&max>x.min))throw new Error('نطاق المسافة يتداخل مع شريحة تسعير أخرى. عدّل الحدود بحيث لا تتداخل الشرائح.');
   const updated=await sbRequest('delivery_pricing?id=eq.'+encodeURIComponent(id),'PATCH',{min_km:min,max_km:max,delivery_fee:fee});
   if(!updated.length)throw new Error('لم يتم حفظ التعديل. تأكد من صلاحية الإدارة.');
   box.textContent='تم حفظ التسعيرة بنجاح.';
