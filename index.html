@@ -89,6 +89,88 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 
 /* ترحيب داخل تصميم الخلفية */
 #welcomeGreeting{display:none}
+
+/* لوحة إدارة سفينة نوح — تنسيق موحد ومناسب للموبايل */
+#admin.screen.active{
+ min-height:100vh;min-height:100dvh;
+ padding:14px 12px 28px;
+ background:linear-gradient(180deg,#eaf3ff 0%,#f5f8fc 48%,#e7eef8 100%);
+ color:#17345d;
+}
+#admin.screen::before{background-size:min(76vw,330px) auto;opacity:.035}
+#admin #adminLogin,
+#admin #adminHome,
+#admin .admin-subpage{
+ width:100%;max-width:100%;margin:0 auto 14px;
+ padding:20px 15px 18px;
+ border:1px solid #d7e3f2;border-radius:22px;
+ background:rgba(255,255,255,.97);
+ box-shadow:0 8px 24px rgba(20,55,95,.09);
+ text-align:right;
+}
+#admin #adminLogin{padding-top:58px;text-align:right}
+#admin h2{font-size:21px;line-height:1.5;color:#123f78;margin:8px 0 10px}
+#admin h3{color:#174b80}
+#admin p{color:#536b86;font-size:14px}
+#admin .small{color:#647991;line-height:1.75}
+#admin .form{padding:12px 0;gap:10px}
+#admin label{display:block;color:#294766;font-weight:700;font-size:14px;margin:7px 0 5px}
+#admin input,#admin select,#admin textarea{
+ border:1px solid #cbd9e9;border-radius:13px;background:#fbfdff;
+ color:#183653;min-height:48px;padding:12px 13px;
+}
+#admin input:focus,#admin select:focus,#admin textarea:focus{
+ outline:0;border-color:#2784c7;box-shadow:0 0 0 3px rgba(39,132,199,.13)
+}
+#admin button.action{
+ width:100%;min-height:49px;padding:12px 14px;border:0;border-radius:14px;
+ background:linear-gradient(135deg,#0879bd,#0756ad);
+ color:#fff;font-size:15px;font-weight:700;
+ box-shadow:0 4px 10px rgba(7,86,173,.15);
+ cursor:pointer;transition:transform .15s ease,filter .15s ease;
+}
+#admin button.action:active{transform:scale(.985);filter:brightness(.96)}
+#admin button.action.secondary{
+ background:#edf4fc;color:#174b80;border:1px solid #d4e2f2;
+ box-shadow:none;
+}
+#admin button.back{
+ position:absolute;top:12px;right:12px;z-index:4;
+ min-height:40px;padding:9px 15px;border:1px solid #d4e2f2;
+ border-radius:13px;background:#edf4fc;color:#174b80;
+ font-size:14px;font-weight:700;
+}
+#admin #adminHome{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:10px;padding-top:66px;
+}
+#admin #adminHome h2,#admin #adminHome p{grid-column:1/-1;margin:0}
+#admin #adminHome h2{font-size:23px}
+#admin #adminHome .small{margin-top:-3px}
+#admin #adminHome>button.action.secondary{
+ min-height:76px;display:flex;align-items:center;justify-content:center;
+ padding:12px 9px;line-height:1.55;text-align:center;
+ font-size:14px;border-radius:16px;
+}
+#admin #adminHome>button[onclick="adminLogout()"]{
+ grid-column:1/-1;min-height:42px;width:auto;justify-self:end;
+ padding:8px 14px;background:#fff1ed;color:#a43d2d;border:1px solid #f2d5ce;
+}
+#admin .admin-subpage{position:relative;padding-top:66px;min-height:180px}
+#admin .admin-subpage>h2{margin:0 0 12px}
+#admin .admin-subpage .record{
+ border:1px solid #dce6f2;border-radius:15px;background:#f8fbff;
+ padding:13px;margin:10px 0;box-shadow:0 2px 8px rgba(20,55,95,.04)
+}
+#admin .admin-subpage button{max-width:100%}
+#admin .admin-subpage .row{align-items:center}
+#admin #adminRiderTrackingMap{border:1px solid #d6e2f0;border-radius:16px;overflow:hidden}
+#admin .admin-subpage form{padding:12px 0}
+@media(max-width:350px){
+ #admin #adminHome{grid-template-columns:1fr}
+ #admin #adminHome>button.action.secondary{min-height:52px}
+}
+
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
