@@ -38,6 +38,7 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 .shop-image-help{font-size:12px;color:#526581;line-height:1.7;margin:4px 0 8px}
 .shop-image-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 12px}
 .shop-image-preview img{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #b8cbed;background:#eef4ff}
+.merchant-map-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.merchant-map-actions button{flex:1;min-width:140px}.merchant-map-box{height:260px;border-radius:14px;border:1px solid #b8cbed;margin-top:8px;background:#eaf2ff;overflow:hidden}
 .shop-approval-images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
 .shop-approval-images img{width:100%;height:130px;object-fit:cover;border-radius:10px;border:1px solid #b8cbed;background:#eef4ff}
 
@@ -277,6 +278,7 @@ if ("serviceWorker" in navigator) {
 <label for="merchantPhone">رقم هاتف المحل</label><input id="merchantPhone" required inputmode="tel" pattern="01[0-9]{9}" maxlength="11" placeholder="01xxxxxxxxx">
 <label for="merchantType">نشاط المحل</label><select id="merchantType" required><option value="">اختر النشاط</option><option>سوبر ماركت وبقالة</option><option>مطعم</option><option>مخبز</option><option>صيدلية</option><option>خضار وفاكهة</option><option>أدوات منزلية</option><option>أخرى</option></select>
 <label for="merchantAddress">عنوان المحل داخل مدينة السادات</label><input id="merchantAddress" required maxlength="300" placeholder="المنطقة والشارع">
+<label>حدد موقع المحل على الخريطة (مطلوب)</label><div class="small">اضغط على مكان المحل في الخريطة، أو استخدم موقعك الحالي ثم حرّك العلامة للمكان الصحيح.</div><div class="merchant-map-actions"><button class="action secondary" type="button" onclick="useMerchantCurrentLocation()">استخدم موقعي الحالي</button><button class="action secondary" type="button" onclick="clearMerchantLocation()">مسح تحديد الموقع</button></div><div id="merchantMap" class="merchant-map-box"></div><div id="merchantMapStatus" class="small" aria-live="polite">لم يتم تحديد موقع المحل بعد.</div>
 <label for="merchantStorefrontImage">صورة واجهة المحل</label>
 <input id="merchantStorefrontImage" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewShopRegistrationImages()">
 <div class="shop-image-help">اختار صورة واضحة لواجهة المحل. الحد الأقصى 5 ميجابايت للصورة.</div>
@@ -366,6 +368,7 @@ function renderSafinetScreen(id){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  target.classList.add('active');
  if(id==='customer'){ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
+ if(id==='merchant'){setTimeout(initMerchantMap,180);}
  if(id==='admin')showAdminAccess();
  window.scrollTo(0,0);
 }
@@ -834,7 +837,8 @@ async function registerShop(event){
   if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')throw new Error('افتح نموذج تسجيل المحل من نافذة خاصة أو سجّل الخروج من حساب الإدارة أولاً.');
   if(!session){const {data,error}=await sbClient.auth.signInAnonymously();if(error)throw new Error('تعذر بدء جلسة التسجيل الآمنة. '+error.message);session=data.session;}
   if(!session||!session.user)throw new Error('لم يتم إنشاء جلسة تسجيل آمنة.');
-  const {data:shopId,error:registerError}=await sbClient.rpc('register_shop_with_owner',{p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address});
+  if(!merchantShopCoords)throw new Error('حدد موقع المحل على الخريطة أولاً.');
+  const {data:shopId,error:registerError}=await sbClient.rpc('register_shop_with_owner',{p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address,p_latitude:merchantShopCoords.lat,p_longitude:merchantShopCoords.lon});
   if(registerError)throw registerError;if(!shopId)throw new Error('لم يصل رقم طلب المحل من قاعدة البيانات.');
   const uploaded=[];
   try{
@@ -851,8 +855,8 @@ async function registerShop(event){
    if(uploaded.length)await sbClient.storage.from('shop-images').remove(uploaded).catch(()=>{});
    throw new Error('تعذر حفظ صور أو بيانات المنتجات: '+(imageError.message||'خطأ غير معروف')+'. راجع البيانات وحاول مرة أخرى.');
   }
-  form.reset();previewShopRegistrationImages();
-  box.textContent='تم إرسال طلب المحل وصوره وبيانات المنتجات بنجاح. سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+  form.reset();previewShopRegistrationImages();clearMerchantLocation();
+  box.textContent='تم إرسال طلب المحل وصوره وموقعه على الخريطة وبيانات المنتجات بنجاح. سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
  }catch(e){box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';}
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -861,6 +865,7 @@ window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('
 
 
 let deliveryMap, routeLayer, pickupMarker, dropMarker;
+let merchantMap=null,merchantMapMarker=null,merchantShopCoords=null;
 let routeDistanceKm = null;
 let customerCatalog = [];
 let customerSortByDistance = false;
@@ -870,6 +875,32 @@ let customerCart = JSON.parse(localStorage.getItem("safinet_customer_cart") || "
 let customerInvoice = null;
 let deliveryPricing = [];
 let pickupCoords = null, dropCoords = null, mapPickMode = null;
+function initMerchantMap(){
+ const el=document.getElementById('merchantMap');if(!el||!window.L)return;
+ if(!merchantMap){
+  merchantMap=L.map(el).setView([30.36,30.53],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(merchantMap);
+  merchantMap.on('click',e=>setMerchantLocation({lat:e.latlng.lat,lon:e.latlng.lng}));
+ }
+ setTimeout(()=>merchantMap.invalidateSize(),150);
+}
+function setMerchantLocation(point){
+ if(!point||!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon)))return;
+ merchantShopCoords={lat:Number(point.lat),lon:Number(point.lon)};
+ if(!merchantMap)initMerchantMap();
+ if(merchantMapMarker)merchantMap.removeLayer(merchantMapMarker);
+ merchantMapMarker=L.marker([merchantShopCoords.lat,merchantShopCoords.lon],{draggable:true}).addTo(merchantMap).bindPopup('موقع المحل').openPopup();
+ merchantMapMarker.on('dragend',()=>{const p=merchantMapMarker.getLatLng();merchantShopCoords={lat:p.lat,lon:p.lng};updateMerchantMapStatus();});
+ if(merchantMap)merchantMap.setView([merchantShopCoords.lat,merchantShopCoords.lon],16);
+ updateMerchantMapStatus();
+}
+function updateMerchantMapStatus(){const box=document.getElementById('merchantMapStatus');if(box)box.textContent=merchantShopCoords?'تم تحديد موقع المحل بنجاح. يمكنك تحريك العلامة لضبط المكان بدقة.':'لم يتم تحديد موقع المحل بعد.';}
+function clearMerchantLocation(){merchantShopCoords=null;if(merchantMap&&merchantMapMarker)merchantMap.removeLayer(merchantMapMarker);merchantMapMarker=null;updateMerchantMapStatus();}
+function useMerchantCurrentLocation(){
+ const box=document.getElementById('merchantMapStatus');if(box)box.textContent='جارٍ تحديد موقعك الحالي...';
+ if(!navigator.geolocation){if(box)box.textContent='تحديد الموقع غير مدعوم. اضغط على الخريطة لتحديد المحل.';return;}
+ navigator.geolocation.getCurrentPosition(p=>{initMerchantMap();setMerchantLocation({lat:p.coords.latitude,lon:p.coords.longitude});},e=>{if(box)box.textContent=e.code===1?'اسمح للتطبيق باستخدام الموقع، أو اضغط على الخريطة لتحديد المحل يدويًا.':'تعذر تحديد موقعك. اضغط على الخريطة لتحديد المحل يدويًا.';},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
 function initDeliveryMap(){
  if(deliveryMap||!window.L)return;
  deliveryMap=L.map('deliveryMap').setView([30.36,30.53],13);
@@ -915,8 +946,8 @@ async function useMyCurrentLocation(){
  },()=>{if(hint)hint.textContent='لم نتمكن من الوصول لموقعك. اضغط على الخريطة لتحديده يدويًا.';initDeliveryMap();deliveryMap.invalidateSize();},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
 async function loadDeliveryPricing(){
- const rows=await sbRequest('delivery_pricing?select=min_km,max_km,delivery_fee&is_active=eq.true&order=min_km.asc');
- deliveryPricing=rows.map(x=>({min:Number(x.min_km),max:Number(x.max_km),fee:Number(x.delivery_fee)})).filter(x=>Number.isFinite(x.min)&&Number.isFinite(x.max)&&Number.isFinite(x.fee));
+ const rows=await sbRequest('delivery_pricing?select=id,min_km,max_km,delivery_fee&is_active=eq.true&order=min_km.asc');
+ deliveryPricing=rows.map(x=>({id:Number(x.id),min:Number(x.min_km),max:Number(x.max_km),fee:Number(x.delivery_fee)})).filter(x=>Number.isFinite(x.min)&&Number.isFinite(x.max)&&Number.isFinite(x.fee));
  if(!deliveryPricing.length)throw new Error('لا توجد شرائح تسعير نشطة محفوظة في لوحة الإدارة.');
  return deliveryPricing;
 }
@@ -935,7 +966,7 @@ async function calculateDeliveryRoute(){
  try{
   const shop=customerCatalog.find(x=>String(x.id)===String(customerCart[0].shopId));
   if(!shop||!shop.address)throw new Error('عنوان المحل غير مسجل. لا يمكن حساب التوصيل بدقة.');
-  if(!pickupCoords)pickupCoords=await geocodeAddress(shop.address);
+  if(!pickupCoords)pickupCoords=(Number.isFinite(Number(shop.latitude))&&Number.isFinite(Number(shop.longitude)))?{lat:Number(shop.latitude),lon:Number(shop.longitude)}:await geocodeAddress(shop.address);
   if(!dropCoords)dropCoords=await geocodeAddress(drop);
   initDeliveryMap();
   setLocationMarker('pickup',pickupCoords);setLocationMarker('drop',dropCoords);
@@ -962,15 +993,29 @@ async function renderAdminPricing(){
   await requireAdminSession();
   box.textContent='جارٍ تحميل شرائح التسعير المحفوظة في قاعدة البيانات...';
   await loadDeliveryPricing();
-  box.innerHTML='<b>التسعيرة النشطة المعتمدة:</b><br>'+deliveryPricing.map(x=>x.min+'–'+x.max+' كم: '+x.fee.toFixed(2)+' جنيه').join('<br>');
+  box.innerHTML='<b>التسعيرة النشطة المعتمدة:</b>'+deliveryPricing.map(x=>'<div class="record" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>'+x.min+'–'+x.max+' كم: <b>'+x.fee.toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 14px;font-size:14px" type="button" onclick="editDeliveryTariff('+x.id+')">تعديل</button><div id="tariffEdit-'+x.id+'" style="display:none;width:100%;margin-top:8px"><div class="form" style="padding:0;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"><label>من كم<input id="tariffMin-'+x.id+'" type="number" min="0" step="0.1" value="'+x.min+'"></label><label>إلى كم<input id="tariffMax-'+x.id+'" type="number" min="0.1" step="0.1" value="'+x.max+'"></label><label>السعر<input id="tariffFee-'+x.id+'" type="number" min="0" step="0.5" value="'+x.fee+'"></label></div><div style="display:flex;gap:8px;margin-top:8px"><button class="action" type="button" onclick="saveDeliveryTariff('+x.id+')">حفظ التعديل</button><button class="action secondary" type="button" onclick="cancelDeliveryTariff('+x.id+')">إلغاء</button></div></div></div>').join('');
  }catch(e){box.textContent='تعذر تحميل التسعيرة: '+(e.message||'خطأ في الاتصال');}
+}
+function editDeliveryTariff(id){const el=document.getElementById('tariffEdit-'+id);if(el)el.style.display='block';}
+function cancelDeliveryTariff(id){const el=document.getElementById('tariffEdit-'+id);if(el)el.style.display='none';}
+async function saveDeliveryTariff(id){
+ const box=document.getElementById('tariffStatus');
+ try{
+  await requireAdminSession();
+  const min=Number(document.getElementById('tariffMin-'+id).value),max=Number(document.getElementById('tariffMax-'+id).value),fee=Number(document.getElementById('tariffFee-'+id).value);
+  if(!Number.isFinite(min)||!Number.isFinite(max)||!Number.isFinite(fee)||min<0||max<=min||fee<0)throw new Error('راجع المسافة والسعر. لازم تكون المسافة النهائية أكبر من البداية والسعر لا يقل عن صفر.');
+  const updated=await sbRequest('delivery_pricing?id=eq.'+encodeURIComponent(id),'PATCH',{min_km:min,max_km:max,delivery_fee:fee});
+  if(!updated.length)throw new Error('لم يتم حفظ التعديل. تأكد من صلاحية الإدارة.');
+  box.textContent='تم حفظ التسعيرة بنجاح.';
+  await renderAdminPricing();
+ }catch(e){box.textContent='تعذر حفظ التعديل: '+(e.message||'خطأ في الاتصال');}
 }
 function toggleVodafoneInfo(){const p=document.getElementById('paymentMethod');const box=document.getElementById('vodafoneInfo');if(p&&box)box.style.display=p.value==='vodafone'?'block':'none';}
 async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
  try{
-  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type,created_at&is_active=eq.true&order=created_at.desc');
+  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc');
   customerCatalog=[];
   for(const shop of shops){
    const products=await sbRequest('products?select=id,name,price,description,image_path&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
