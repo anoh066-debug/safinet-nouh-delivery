@@ -270,7 +270,7 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
-<div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
+<div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب. اترك التطبيق مفتوحًا؛ قد يتوقف تحديث الموقع إذا أُغلق التطبيق أو عمل الهاتف على توفير الطاقة.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
 </section>
 <section id="merchant" class="screen">
 <div class="notice"><button class="back" onclick="go('home')">رجوع</button><h2>تسجيل محل جديد</h2><p>سجّل بيانات المحل داخل مدينة السادات. سيظل المحل غير معتمد حتى تراجعه الإدارة.</p></div>
@@ -343,7 +343,7 @@ if ("serviceWorker" in navigator) {
 <script>
 
 let riderTrackingTimer=null,riderTrackingActive=false,riderTrackingBusy=false;
-let adminTrackingMap=null,adminTrackingMarkers={};
+let adminTrackingMap=null,adminTrackingMarkers={},adminTrackingTimer=null;
 function trackingOrderFinished(status){return ['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed','ملغي','ملغى','ملغية','cancelled','canceled'].includes(String(status||'').trim().toLowerCase());}
 async function startRiderLocationTracking(){
  const box=document.getElementById('riderTrackingStatus'),say=t=>{if(box)box.textContent=t;};
@@ -418,6 +418,7 @@ async function renderAdminRiderTracking(){
   list.innerHTML=visible.map(x=>'<div class="record"><b>'+escapeText(x.rider.full_name)+'</b> — '+escapeText(x.rider.phone||'')+'<br>طلب #'+escapeText(x.order.id)+' — '+escapeText(x.order.status||'')+'<br>الوجهة: '+escapeText(x.order.delivery_address||'—')+'<br>'+(x.loc?'آخر تحديث: '+escapeText(new Date(x.loc.updated_at).toLocaleString('ar-EG')):'لم يشارك المندوب موقعه بعد.')+'</div>').join('')||'<p>لا توجد طلبات نشطة مسندة إلى مناديب الآن.</p>';
   status.textContent='طلبات نشطة: '+visible.length+' — مواقع مستلمة: '+visible.filter(x=>x.loc).length+' — بانتظار الموقع: '+visible.filter(x=>!x.loc).length;
   setTimeout(()=>adminTrackingMap.invalidateSize(),200);
+  if(!adminTrackingTimer)adminTrackingTimer=setInterval(()=>{const page=document.getElementById('adminRiderTracking');if(page&&page.style.display!=='none')renderAdminRiderTracking();},15000);
  }catch(e){status.textContent='تعذر تحميل التتبع: '+(e.message||'خطأ');}
 }
 function openAdminPage(id,loader){const home=document.getElementById('adminHome');if(home)home.style.display='none';document.querySelectorAll('#adminWorkspace .admin-subpage').forEach(p=>p.style.display='none');const page=document.getElementById(id);if(page)page.style.display='block';window.scrollTo(0,0);if(typeof loader==='function')loader();}
