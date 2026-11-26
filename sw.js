@@ -1,4 +1,4 @@
-const CACHE_NAME = "safinet-shell-v11";
+const CACHE_NAME = "safinet-shell-v12";
 const APP_SHELL = ["/", "/manifest.json", "/icon.svg", "/safinet-noah-icon(1).png?v=6", "/home-screen.jpg.jpg", ];
 
 self.addEventListener("install", event => {
