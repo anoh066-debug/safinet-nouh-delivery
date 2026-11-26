@@ -993,7 +993,8 @@ const CUSTOMER_CATEGORIES=[
  {key:'gifts',icon:'🎁',name:'هدايا وإكسسوارات',hint:'هدايا ولمسات جميلة'},
  {key:'review',icon:'📝',name:'تصنيف قيد المراجعة',hint:'لم يُحدد القسم بعد'}
 ];
-let selectedCustomerCategory=null;\nlet selectedCustomerShopId=null;
+let selectedCustomerCategory=null;
+let selectedCustomerShopId=null;
 function getCustomerCategory(activity){
  const a=String(activity||'').trim().toLowerCase();
  if(!a)return 'review';
@@ -1015,7 +1016,7 @@ function renderCustomerCatalog(){
  const counts={};CUSTOMER_CATEGORIES.forEach(c=>counts[c.key]=0);
  customerCatalog.forEach(shop=>{const key=getCustomerCategory(shop.activity_type);counts[key]=(counts[key]||0)+1;});
  const selected=CUSTOMER_CATEGORIES.find(c=>c.key===selectedCustomerCategory);
- const categoryButtons=CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile" onclick="selectCustomerCategory(\\''+c.key+'\\')"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
+  const categoryButtons=CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile" data-key="'+c.key+'" onclick="selectCustomerCategory(this.dataset.key)"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
  const intro='<div class="customer-catalog-intro"><h2>أقسام التسوق</h2><p>اختار القسم المناسب، وبعدها اختار المحل لتصفح الأصناف والأسعار.</p><div id="shopDistanceStatus" class="small" aria-live="polite" style="margin-top:8px;color:#fff"></div></div>';
  if(selectedCustomerShopId!==null){
   const shop=customerCatalog.find(x=>String(x.id)===String(selectedCustomerShopId));
