@@ -1094,9 +1094,27 @@ async function confirmCustomerOrder(){
  const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');
  const localRow={...payload,local_order_no:localNo,order_status:'جديد'};
  const feedback=document.getElementById('orderFeedback');
- feedback.textContent='جارٍ إرسال الطلب إلى قاعدة البيانات...';
+ feedback.textContent='جارٍ تأمين هوية العميل وإرسال الطلب...';
  try{
-  const result=await sbRequest('rpc/submit_customer_order','POST',{p_customer_name:inv.name,p_customer_phone:inv.phone,p_delivery_address:inv.address,p_shop_name:inv.shopName,p_order_details:JSON.stringify(payload),p_total_amount:inv.total});
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بخدمة تسجيل العميل.');
+  let {data:{session},error:sessionError}=await sbClient.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')throw new Error('جلسة الإدارة لا تُستخدم لطلبات العملاء. افتح التطبيق من نافذة العميل.');
+  if(!session){
+   const {data,error}=await sbClient.auth.signInAnonymously();
+   if(error)throw new Error('تعذر إنشاء هوية العميل على هذا الجهاز. '+error.message);
+   session=data.session;
+  }
+  if(!session||!session.user)throw new Error('لم يتم تأمين هوية العميل.');
+  const {data:result,error:orderError}=await sbClient.rpc('submit_customer_order',{
+   p_customer_name:inv.name,
+   p_customer_phone:inv.phone,
+   p_delivery_address:inv.address,
+   p_shop_name:inv.shopName,
+   p_order_details:JSON.stringify(payload),
+   p_total_amount:inv.total
+  });
+  if(orderError)throw orderError;
   rows.unshift({...localRow,cloud_order_id:result});
   localStorage.setItem('safinet_orders',JSON.stringify(rows));
   feedback.textContent='تم إرسال الطلب إلى قاعدة البيانات بنجاح. رقم الطلب: '+String(result);
