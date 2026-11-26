@@ -319,6 +319,7 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button>
 <h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>اختر القسم الذي تريد إدارته:</p>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegistrations',renderAdmin)">عرض تسجيلات العملاء والمندوبين</button>
+<button class="action secondary" type="button" onclick="openAdminPage('adminRegisteredShops',renderRegisteredShops)">المحلات المسجلة</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminOrders',renderOrders)">عرض الطلبات</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRiderLedger',renderRiderLedger)">متابعة المندوبين وكشف الحساب وجرد الطلبات</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminShopVisits',renderShopVisits)">قائمة زيارات المحلات</button>
@@ -326,6 +327,7 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" type="button" onclick="openAdminPage('adminPricing',renderAdminPricing)">تحديث وعرض التسعيرة المحفوظة</button>
 </div>
 <div id="adminRegistrations" class="notice admin-subpage" style="display:none;text-align:right"><button class="back" type="button" onclick="backToAdminHome()">رجوع إلى لوحة الإدارة</button><h2>تسجيلات العملاء والمندوبين</h2><div id="adminData" class="small"></div></div>
+<div id="adminRegisteredShops" class="notice admin-subpage" style="display:none;text-align:right"><button class="back" type="button" onclick="backToAdminHome()">رجوع إلى لوحة الإدارة</button><h2>المحلات المسجلة</h2><p class="small">جميع المحلات المسجلة. ابحث باسم المحل أو رقم الهاتف أو النشاط أو العنوان، ثم افتح المحل للتعديل أو الحذف.</p><div id="registeredShopsContent" class="small" aria-live="polite"></div></div>
 <div id="adminOrders" class="notice admin-subpage" style="display:none;text-align:right"><button class="back" type="button" onclick="backToAdminHome()">رجوع إلى لوحة الإدارة</button><h2>الطلبات</h2><div id="adminOrdersContent" class="small"></div></div>
 <div id="adminRiderLedger" class="notice admin-subpage" style="display:none;text-align:right"><button class="back" type="button" onclick="backToAdminHome()">رجوع إلى لوحة الإدارة</button><div id="riderLedgerPanel"><h2>متابعة المندوبين وكشف الحساب</h2><p class="small">نصيب المندوب 90% ونصيب الإدارة 10% من أجرة التوصيل فقط. الطلبات الملغاة لا تُحتسب.</p><div id="riderLedgerContent"></div></div></div>
 <div id="adminShopVisits" class="notice admin-subpage" style="display:none;text-align:right"><button class="back" type="button" onclick="backToAdminHome()">رجوع إلى لوحة الإدارة</button><div id="shopVisitPanel"><div class="row" style="align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h2 style="margin:0">قائمة زيارات المحلات</h2><button class="action secondary" type="button" style="min-width:42px;padding:8px 12px" onclick="sortShopVisitsByNearest()" title="تحديث الترتيب حسب الأقرب لموقعي" aria-label="تحديث الترتيب حسب الأقرب لموقعي">↻</button></div><p id="shopVisitSortStatus" class="small" style="margin:6px 0">اضغط علامة التحديث لترتيب الزيارات حسب الأقرب لموقعك.</p><h3>إضافة محل لقائمة الزيارات</h3><form id="shopVisitForm" onsubmit="addShopVisit(event)"><label for="visitShopName">اسم المحل</label><input id="visitShopName" required maxlength="120" placeholder="اسم المحل"><label for="visitShopPhone">رقم الهاتف (اختياري)</label><input id="visitShopPhone" inputmode="tel" maxlength="11" placeholder="01xxxxxxxxx"><label for="visitShopType">نوع النشاط</label><input id="visitShopType" maxlength="100" placeholder="مثال: سوبر ماركت أو صيدلية"><label for="visitShopAddress">العنوان</label><input id="visitShopAddress" maxlength="300" placeholder="المنطقة والشارع"><button class="action" type="submit">إضافة إلى قائمة الزيارات</button></form><div id="shopVisitList" class="small" style="margin-top:12px"></div></div></div>
@@ -460,6 +462,18 @@ function filterAdminShops(value){
  const rows=adminShopRecords.filter(x=>[x.shop_name,x.phone,x.activity_type,x.address].some(v=>String(v||'').toLocaleLowerCase().includes(q)));
  box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" type="button" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button><button class="action secondary" type="button" onclick="deleteShop('+JSON.stringify(x.id)+')">حذف المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
 }
+async function renderRegisteredShops(){
+ const box=document.getElementById('registeredShopsContent');
+ if(!box)return;
+ box.textContent='جارٍ تحميل المحلات المسجلة...';
+ try{
+  await requireAdminSession();
+  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&order=shop_name.asc');
+  adminShopRecords=shops||[];
+  box.innerHTML='<label for="adminShopSearch">ابحث باسم المحل أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList" style="margin-top:10px"></div>';
+  filterAdminShops('');
+ }catch(e){box.textContent='تعذر تحميل المحلات المسجلة: '+(e.message||'خطأ غير معروف');}
+}
 async function renderAdmin(){
  const box=document.getElementById('adminData');
  if(!box){alert('تعذر العثور على مساحة عرض بيانات الإدارة.');return;}
@@ -471,9 +485,7 @@ async function renderAdmin(){
   adminShopRecords=shops||[];
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
   html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
-  html+='<h3>المحلات ('+shops.length+')</h3><label for="adminShopSearch">البحث عن محل بالاسم أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList"></div>';
   box.innerHTML=html;
-  filterAdminShops('');
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
 async function editShop(id){
@@ -492,7 +504,7 @@ async function editShop(id){
   if(approve){update.is_registered=true;update.is_active=true;}
   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',update);
   alert(approve?'تم حفظ البيانات واعتماد المحل بنجاح.':'تم حفظ بيانات المحل فقط.');
-  await renderAdmin();await renderShopApprovals();
+  await renderRegisteredShops();
  }catch(e){alert('تعذر تنفيذ مراجعة المحل: '+(e.message||'خطأ في الاتصال'));}
 }
 async function deleteShop(id){
@@ -501,7 +513,7 @@ async function deleteShop(id){
   await requireAdminSession();
   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'DELETE');
   alert('تم حذف المحل.');
-  await renderAdmin();await renderShopApprovals();
+  await renderRegisteredShops();
  }catch(e){alert('تعذر حذف المحل. قد يكون مرتبطًا بسجلات أخرى في قاعدة البيانات. التفاصيل: '+(e.message||'خطأ في الاتصال'));}
 }
 async function approveShop(id){if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await requireAdminSession();await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');await renderAdmin();await renderShopApprovals();}catch(e){alert('تعذر اعتماد المحل: '+(e.message||'خطأ في الاتصال')+' — راجع صلاحيات تحديث جدول shops في Supabase.')}}
