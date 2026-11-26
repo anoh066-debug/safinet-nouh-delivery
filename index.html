@@ -35,6 +35,12 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 .secondary{background:#073b91}
 .small{font-size:13px;color:#526581}
 .record{border:1px solid #b8cbed;border-radius:10px;padding:10px;margin:8px 0;background:#f7faff;overflow-wrap:anywhere}.form label{display:block;text-align:right;font-weight:bold;margin:8px 0 4px}.form input{width:100%}
+.shop-image-help{font-size:12px;color:#526581;line-height:1.7;margin:4px 0 8px}
+.shop-image-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 12px}
+.shop-image-preview img{width:100%;height:92px;object-fit:cover;border-radius:10px;border:1px solid #b8cbed;background:#eef4ff}
+.shop-approval-images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.shop-approval-images img{width:100%;height:130px;object-fit:cover;border-radius:10px;border:1px solid #b8cbed;background:#eef4ff}
+
 
 .home-actions{position:relative;z-index:5;display:grid;grid-template-columns:1fr;gap:9px;padding:12px 14px;background:#fff}
 .home-actions .action{margin:0;min-height:46px;width:100%}
@@ -223,6 +229,14 @@ if ("serviceWorker" in navigator) {
 <label for="merchantPhone">رقم هاتف المحل</label><input id="merchantPhone" required inputmode="tel" pattern="01[0-9]{9}" maxlength="11" placeholder="01xxxxxxxxx">
 <label for="merchantType">نشاط المحل</label><select id="merchantType" required><option value="">اختر النشاط</option><option>سوبر ماركت وبقالة</option><option>مطعم</option><option>مخبز</option><option>صيدلية</option><option>خضار وفاكهة</option><option>أدوات منزلية</option><option>أخرى</option></select>
 <label for="merchantAddress">عنوان المحل داخل مدينة السادات</label><input id="merchantAddress" required maxlength="300" placeholder="المنطقة والشارع">
+<label for="merchantStorefrontImage">صورة واجهة المحل</label>
+<input id="merchantStorefrontImage" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewShopRegistrationImages()">
+<div class="shop-image-help">اختار صورة واضحة لواجهة المحل. الحد الأقصى 5 ميجابايت للصورة.</div>
+<div id="merchantStorefrontPreview" class="shop-image-preview" aria-live="polite"></div>
+<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 5 صور)</label>
+<input id="merchantProductImages" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewShopRegistrationImages()">
+<div class="shop-image-help">تقدر تختار صورة واحدة أو أكثر للمنتجات، بحد أقصى 5 صور، وكل صورة حتى 5 ميجابايت.</div>
+<div id="merchantProductsPreview" class="shop-image-preview" aria-live="polite"></div>
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
 </form>
@@ -400,8 +414,15 @@ async function renderShopApprovals(){
  panel.style.display='block';list.textContent='جارٍ تحميل طلبات تسجيل المحلات...';
  try{
   await requireAdminSession();
-  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_registered,is_active&is_registered=eq.true&is_active=eq.false&order=shop_name.asc');
-  list.innerHTML=shops.length?shops.map(s=>'<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+'<br><small>الحالة: طلب تسجيل — بانتظار موافقة الإدارة</small><div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="action" type="button" onclick="approveShop('+JSON.stringify(s.id)+')">اعتماد المحل</button><button class="action secondary" type="button" onclick="rejectShopRegistration('+JSON.stringify(s.id)+')">رفض الطلب</button></div></div>').join(''):'<p>لا توجد طلبات تسجيل محلات معلقة حاليًا.</p>';
+  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,storefront_image_path,product_image_paths,is_registered,is_active&is_registered=eq.true&is_active=eq.false&order=shop_name.asc');
+  list.innerHTML=shops.length?shops.map(s=>{
+   const paths=[s.storefront_image_path,...(Array.isArray(s.product_image_paths)?s.product_image_paths:[])].filter(Boolean);
+   const images=paths.length?'<div class="shop-approval-images">'+paths.map((path,i)=>{
+    const url=sbClient.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
+    return '<a href="'+escapeText(url)+'" target="_blank" rel="noopener"><img src="'+escapeText(url)+'" alt="'+(i===0?'واجهة المحل':'صورة منتج')+'"></a>';
+   }).join('')+'</div>':'<p class="small">لم تُرفق صور بهذا الطلب.</p>';
+   return '<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+images+'<small>الحالة: طلب تسجيل — بانتظار موافقة الإدارة</small><div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="action" type="button" onclick="approveShop('+JSON.stringify(s.id)+')">اعتماد المحل</button><button class="action secondary" type="button" onclick="rejectShopRegistration('+JSON.stringify(s.id)+')">رفض الطلب</button></div></div>';
+  }).join(''):'<p>لا توجد طلبات تسجيل محلات معلقة حاليًا.</p>';
  }catch(e){list.textContent='تعذر تحميل طلبات المحلات: '+(e.message||'خطأ في الاتصال');}
 }
 async function rejectShopRegistration(id){
@@ -524,20 +545,94 @@ async function recordRiderPayout(event,riderId){
 }
 
 async function renderOrders(){const box=document.getElementById('adminOrdersContent');if(!box)return;box.textContent='جارٍ التحقق من دخول الإدارة...';try{await requireAdminSession();box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);const cloud=await sbRequest('orders?select=*&order=created_at.desc');let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية.</p>');box.innerHTML=html;}catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}}
+function previewShopRegistrationImages(){
+ const storefront=document.getElementById('merchantStorefrontImage');
+ const products=document.getElementById('merchantProductImages');
+ const one=document.getElementById('merchantStorefrontPreview');
+ const many=document.getElementById('merchantProductsPreview');
+ const draw=(box,files)=>{
+  if(!box)return;
+  box.innerHTML='';
+  Array.from(files||[]).forEach(file=>{
+   if(!file||!file.type.startsWith('image/'))return;
+   const img=document.createElement('img');
+   img.alt='معاينة الصورة المختارة';
+   img.src=URL.createObjectURL(file);
+   img.onload=()=>URL.revokeObjectURL(img.src);
+   box.appendChild(img);
+  });
+ };
+ draw(one,storefront&&storefront.files?Array.from(storefront.files).slice(0,1):[]);
+ draw(many,products&&products.files?Array.from(products.files).slice(0,5):[]);
+}
+function validateShopImage(file){
+ if(!file)return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('يُسمح بصور JPG أو PNG أو WEBP فقط.');
+ if(file.size>5*1024*1024)throw new Error('حجم كل صورة يجب ألا يتجاوز 5 ميجابايت.');
+}
+async function uploadShopRegistrationImage(shopId,file,label){
+ validateShopImage(file);
+ const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+ const path=String(shopId)+'/'+crypto.randomUUID()+'-'+label+'.'+ext;
+ const {error}=await sbClient.storage.from('shop-images').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+ if(error)throw error;
+ return path;
+}
 async function registerShop(event){
  event.preventDefault();
+ const form=event.currentTarget;
  const name=document.getElementById('merchantName').value.trim();
  const phone=document.getElementById('merchantPhone').value.trim();
  const activity=document.getElementById('merchantType').value;
  const address=document.getElementById('merchantAddress').value.trim();
+ const storefrontFile=document.getElementById('merchantStorefrontImage').files[0]||null;
+ const productFiles=Array.from(document.getElementById('merchantProductImages').files||[]);
  const box=document.getElementById('merchantStatus');
- if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address){box.textContent='أكمل اسم المحل ورقم الهاتف والنشاط والعنوان بشكل صحيح.';return;}
- box.textContent='جارٍ إرسال طلب التسجيل للمراجعة...';
+ if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
+ if(productFiles.length>5){box.textContent='يمكنك اختيار 5 صور للمنتجات كحد أقصى.';return;}
  try{
-  await sbRequest('rpc/register_shop','POST',{p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address});
-  document.getElementById('merchantForm').reset();
-  box.textContent='تم إرسال طلب تسجيل المحل إلى قاعدة البيانات. سيظل غير ظاهر للعملاء حتى اعتماد الإدارة.';
- }catch(e){box.textContent='لم يتم إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم نعرضه كتسجيل ناجح.';}
+  validateShopImage(storefrontFile);
+  productFiles.forEach(validateShopImage);
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بخدمة التسجيل الآمن.');
+  box.textContent='جارٍ تجهيز تسجيل المحل ورفع الصور...';
+  let {data:{session},error:sessionError}=await sbClient.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')
+   throw new Error('افتح نموذج تسجيل المحل من نافذة خاصة أو سجّل الخروج من حساب الإدارة أولاً.');
+  if(!session){
+   const {data,error}=await sbClient.auth.signInAnonymously();
+   if(error)throw new Error('تعذر بدء جلسة التسجيل الآمنة. '+error.message);
+   session=data.session;
+  }
+  if(!session||!session.user)throw new Error('لم يتم إنشاء جلسة تسجيل آمنة.');
+  const {data:shopId,error:registerError}=await sbClient.rpc('register_shop_with_owner',{
+   p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address
+  });
+  if(registerError)throw registerError;
+  if(!shopId)throw new Error('لم يصل رقم طلب المحل من قاعدة البيانات.');
+  const uploaded=[];
+  try{
+   const storefrontPath=await uploadShopRegistrationImage(shopId,storefrontFile,'storefront');
+   uploaded.push(storefrontPath);
+   const productPaths=[];
+   for(let i=0;i<productFiles.length;i++){
+    const path=await uploadShopRegistrationImage(shopId,productFiles[i],'product-'+(i+1));
+    uploaded.push(path);productPaths.push(path);
+   }
+   const {error:imageSaveError}=await sbClient.rpc('save_shop_registration_images',{
+    p_shop_id:shopId,p_storefront_path:storefrontPath,p_product_paths:productPaths
+   });
+   if(imageSaveError)throw imageSaveError;
+  }catch(imageError){
+   if(uploaded.length)await sbClient.storage.from('shop-images').remove(uploaded).catch(()=>{});
+   throw new Error('تم حفظ بيانات الطلب، لكن لم تكتمل عملية رفع الصور: '+(imageError.message||'خطأ غير معروف')+'. أعد الإرسال بنفس رقم الهاتف لإكمال الصور.');
+  }
+  form.reset();
+  previewShopRegistrationImages();
+  box.textContent='تم إرسال طلب تسجيل المحل وصوره بنجاح. سيظل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+ }catch(e){
+  box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';
+ }
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function clearRegistrations(){if(confirm('هل تريد مسح النسخة المحلية الاحتياطية؟ لن يتم حذف بيانات قاعدة البيانات.')){localStorage.removeItem('safinet_registrations');renderAdmin()}}
