@@ -13,8 +13,14 @@
   "theme_color": "#0756ad",
   "icons": [
     {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/safinet-noah-icon(1).png?v=4",
-      "sizes": "512x512",
+      "sizes": "600x600",
       "type": "image/png",
       "purpose": "any maskable"
     }
