@@ -1543,6 +1543,56 @@ function showSafinetWelcome(){
 }
 window.addEventListener('load',()=>{setTimeout(showSafinetWelcome,650);});
 
+/* إضافة خيار تصوير مباشر لكل حقل يرفع الصور مع الإبقاء على اختيار المعرض */
+function enhanceImageUploadInputs(root=document){
+ const inputs=root.querySelectorAll('input[type="file"]');
+ inputs.forEach(input=>{
+  if(input.dataset.cameraEnhanced==='1')return;
+  const accept=(input.getAttribute('accept')||'').toLowerCase();
+  if(!accept.includes('image'))return;
+  input.dataset.cameraEnhanced='1';
+  const cameraButton=document.createElement('button');
+  cameraButton.type='button';
+  cameraButton.className='action secondary';
+  cameraButton.textContent='📷 تصوير بالكاميرا';
+  cameraButton.style.cssText='display:block;width:100%;margin:7px 0;padding:10px;font-size:14px';
+  const cameraInput=document.createElement('input');
+  cameraInput.type='file';
+  cameraInput.accept='image/*';
+  cameraInput.setAttribute('capture','environment');
+  cameraInput.multiple=false;
+  cameraInput.hidden=true;
+  cameraInput.addEventListener('change',()=>{
+   if(cameraInput.files&&cameraInput.files.length){
+    try{
+     const transfer=new DataTransfer();
+     Array.from(input.files||[]).forEach(file=>transfer.items.add(file));
+     Array.from(cameraInput.files).forEach(file=>transfer.items.add(file));
+     input.files=transfer.files;
+     input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(error){alert('تعذر إضافة الصورة المصوّرة. جرّب اختيارها من المعرض.');}
+   }
+   cameraInput.value='';
+  });
+  cameraButton.addEventListener('click',()=>cameraInput.click());
+  input.insertAdjacentElement('afterend',cameraButton);
+  cameraButton.insertAdjacentElement('afterend',cameraInput);
+ });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ enhanceImageUploadInputs();
+ const observer=new MutationObserver(records=>{
+  records.forEach(record=>record.addedNodes.forEach(node=>{
+   if(node.nodeType===1){
+    if(node.matches&&node.matches('input[type="file"]'))enhanceImageUploadInputs(node.parentElement||document);
+    else if(node.querySelectorAll)enhanceImageUploadInputs(node);
+   }
+  }));
+ });
+ observer.observe(document.body,{childList:true,subtree:true});
+});
+
+
 
 </script>
 </body>
