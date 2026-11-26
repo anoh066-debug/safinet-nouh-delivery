@@ -65,6 +65,11 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 .catalog-empty{background:#f7faff;border:1px dashed #a9c4e8;border-radius:15px;padding:20px;text-align:center;color:#536b88;line-height:1.8}
 @media(min-width:420px){.category-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+
+/* زر تثبيت التطبيق على Android وiPhone */
+.install-app-button{display:block;width:calc(100% - 28px);margin:12px 14px 18px;padding:13px 16px;border:0;border-radius:14px;background:#ff7900;color:#fff;font-size:17px;font-weight:bold;box-shadow:0 4px 12px #09285d30;cursor:pointer}
+.install-app-button:focus-visible{outline:3px solid #073b91;outline-offset:3px}
+
 /* ترحيب داخل تصميم الخلفية */
 #welcomeGreeting{display:none}
 </style>
@@ -140,6 +145,18 @@ function showMyOrders(){
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="سفينة نوح">
 <script>
+let safinetInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();safinetInstallPrompt=event;});
+window.addEventListener('appinstalled',()=>{safinetInstallPrompt=null;const b=document.getElementById('installAppButton');if(b)b.textContent='تم تثبيت التطبيق على هاتفك';});
+function installSafinetApp(){
+ const ua=navigator.userAgent||'';
+ const isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+ if(isStandalone){alert('تطبيق سفينة نوح دليفري مثبت بالفعل على هاتفك.');return;}
+ if(safinetInstallPrompt){safinetInstallPrompt.prompt();safinetInstallPrompt.userChoice.then(choice=>{if(choice.outcome==='accepted'){const b=document.getElementById('installAppButton');if(b)b.textContent='جارٍ تثبيت التطبيق...';}safinetInstallPrompt=null;}).catch(()=>{});return;}
+ if(isIOS){alert('لتثبيت سفينة نوح دليفري على الآيفون:\\n1- افتح الرابط من متصفح Safari.\\n2- اضغط زر المشاركة أسفل الشاشة.\\n3- اختر «إضافة إلى الشاشة الرئيسية».\\n4- اضغط «إضافة».');return;}
+ alert('لتثبيت التطبيق: افتح الرابط من Chrome، ثم اضغط قائمة ⋮ واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».');
+}
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(error => {
@@ -161,6 +178,7 @@ if ("serviceWorker" in navigator) {
 <button class="poster-phone" type="button" aria-label="اتصل بإدارة التطبيق" onclick="window.location.href='tel:01094881059'"></button>
 <button class="poster-share" type="button" aria-label="مشاركة التطبيق" onclick="shareApp()">↗</button>
 </div>
+<button class="install-app-button" id="installAppButton" type="button" onclick="installSafinetApp()">تثبيت تطبيق سفينة نوح دليفري</button>
 </section>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
