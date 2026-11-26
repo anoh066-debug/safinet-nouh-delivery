@@ -44,6 +44,14 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 
 .home-actions{position:relative;z-index:5;display:grid;grid-template-columns:1fr;gap:9px;padding:12px 14px;background:#fff}
 .home-actions .action{margin:0;min-height:46px;width:100%}
+#shareInstallMenu{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;background:#061b3dcc}
+#shareInstallMenu .share-install-panel{width:min(100%,360px);padding:20px;border-radius:18px;background:#fff;box-shadow:0 12px 40px #0005;text-align:center}
+#shareInstallMenu h3{margin:0 0 14px;color:#073b91}
+#shareInstallMenu .share-install-options{display:grid;gap:10px}
+#shareInstallMenu button{width:100%;min-height:48px;border:0;border-radius:12px;padding:12px;font-size:17px;font-weight:bold;cursor:pointer}
+#shareInstallMenu .share-choice{background:#0756ad;color:#fff}
+#shareInstallMenu .install-choice{background:#ff7900;color:#fff}
+#shareInstallMenu .cancel-choice{background:#e9eef6;color:#17345d}
 .home-footer{text-align:center;padding:12px 10px 18px;background:#fff;color:#17345d;line-height:1.8;font-size:15px}
 .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
 
@@ -124,8 +132,17 @@ async function submitDeliveryOrder(event){
  showMyOrders();
 }
 function shareOrInstallApp(){
- const choice=window.confirm('اضغط «موافق» لمشاركة رابط التطبيق، أو «إلغاء» لتثبيت التطبيق.');
- if(choice){shareApp();}else{installSafinetApp();}
+ const menu=document.getElementById('shareInstallMenu');
+ if(menu){menu.style.display='flex';menu.setAttribute('aria-hidden','false');}
+}
+function closeShareInstallMenu(){
+ const menu=document.getElementById('shareInstallMenu');
+ if(menu){menu.style.display='none';menu.setAttribute('aria-hidden','true');}
+}
+function chooseShareInstall(action){
+ closeShareInstallMenu();
+ if(action==='share')shareApp();
+ else if(action==='install')installSafinetApp();
 }
 async function shareApp(){
  const shareData={title:'سفينة نوح دليفري',text:'جرّب تطبيق سفينة نوح دليفري لطلب التوصيل من المحلات داخل مدينة السادات.',url:'https://misty-band-02bb.anoh066.workers.dev'};
@@ -184,6 +201,16 @@ if ("serviceWorker" in navigator) {
 </div>
 <div class="home-actions"><button class="action" id="installAppButton" type="button" onclick="shareOrInstallApp()">مشاركة التطبيق وتثبيته</button></div>
 </section>
+<div id="shareInstallMenu" role="dialog" aria-modal="true" aria-hidden="true" aria-label="خيارات مشاركة وتثبيت التطبيق" onclick="if(event.target===this)closeShareInstallMenu()">
+ <div class="share-install-panel">
+  <h3>ماذا تريد أن تفعل؟</h3>
+  <div class="share-install-options">
+   <button class="share-choice" type="button" onclick="chooseShareInstall('share')">مشاركة</button>
+   <button class="install-choice" type="button" onclick="chooseShareInstall('install')">تثبيت</button>
+   <button class="cancel-choice" type="button" onclick="chooseShareInstall('cancel')">إلغاء</button>
+  </div>
+ </div>
+</div>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
@@ -268,15 +295,15 @@ if ("serviceWorker" in navigator) {
 <button class="back" onclick="go('home')">رجوع</button>
 <h2>دخول إدارة سفينة نوح</h2><p class="small">الدخول مخصص لحساب الإدارة المعتمد فقط.</p>
 <div class="form" style="padding:0">
-<label for="sbUrl">رابط مشروع Supabase</label><input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="url">
+<label for="sbUrl">رابط مشروع Supabase</label><input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off">
 <label for="sbKey">المفتاح العام Publishable</label><input id="sbKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
 <button class="action" type="button" onclick="saveSupabaseConfig()">حفظ إعدادات قاعدة البيانات على هذا الهاتف</button>
 <button class="action secondary" type="button" onclick="testSupabase()">اختبار الاتصال</button>
 <div id="connectionStatus" class="small" aria-live="polite"></div>
 </div>
 <form class="form" onsubmit="adminSignIn(event)">
-<label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" value="anoh066@gmail.com" autocomplete="username" required>
-<label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" required>
+<label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" placeholder="البريد الإلكتروني للإدارة" autocomplete="off" required>
+<label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="new-password" required>
 <button class="action" type="submit">تسجيل الدخول</button><div id="adminLoginStatus" class="small" aria-live="polite"></div>
 </form>
 <button class="action secondary" type="button" onclick="requestAdminPasswordReset()">نسيت كلمة المرور؟ إرسال رابط استعادة</button>
@@ -314,7 +341,7 @@ function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remo
 let sbClient=null,adminSession=null,adminRecoveryMode=false;
 function initSupabaseAuth(){
  const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
- if(!sbClient){sbClient=window.supabase.createClient(c.url,c.key,{auth:{flowType:'implicit',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+ if(!sbClient){sbClient=window.supabase.createClient(c.url,c.key,{auth:{flowType:'implicit',detectSessionInUrl:true,persistSession:false,autoRefreshToken:false}});
  sbClient.auth.onAuthStateChange((event,session)=>{adminSession=session||null;if(event==='PASSWORD_RECOVERY'){adminRecoveryMode=true;showAdminRecoveryPanel();}if(event==='SIGNED_OUT'){adminSession=null;const w=document.getElementById('adminWorkspace');if(w)w.style.display='none';}});}
  return true;
 }
@@ -326,7 +353,7 @@ async function verifyAdminSession(){
  if(!user||!user.app_metadata||user.app_metadata.role!=='admin'){await sbClient.auth.signOut();adminSession=null;throw new Error('هذا الحساب ليس لديه صلاحية إدارة التطبيق.');}
  return true;
 }
-async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';try{const ok=await verifyAdminSession();if(adminRecoveryMode){showAdminRecoveryPanel();return;}if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';renderAdminPricing();}}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';if(adminRecoveryMode)showAdminRecoveryPanel();}}
+async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';['adminEmail','adminPassword','sbUrl','sbKey'].forEach(id=>{const field=document.getElementById(id);if(field)field.value='';});try{const ok=await verifyAdminSession();if(adminRecoveryMode){showAdminRecoveryPanel();return;}if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';renderAdminPricing();}}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';if(adminRecoveryMode)showAdminRecoveryPanel();}}
 async function requireAdminSession(){if(!await verifyAdminSession())throw new Error('سجّل دخول الإدارة أولاً.');}
 async function adminSignIn(event){event.preventDefault();const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim(),password=document.getElementById('adminPassword').value;box.textContent='جارٍ التحقق من بيانات الدخول...';try{const {data,error}=await sbClient.auth.signInWithPassword({email,password});if(error)throw error;adminSession=data.session;if(!await verifyAdminSession())throw new Error('لم يتم إنشاء جلسة دخول.');document.getElementById('adminLogin').style.display='none';document.getElementById('adminWorkspace').style.display='block';box.textContent='';}catch(e){box.textContent=e.message||'فشل تسجيل الدخول.';}}
 async function requestAdminPasswordReset(){const box=document.getElementById('adminLoginStatus');if(!initSupabaseAuth()){box.textContent='احفظ رابط Supabase والمفتاح العام أولاً.';return;}const email=document.getElementById('adminEmail').value.trim();if(!email){box.textContent='اكتب البريد الإلكتروني أولاً.';return;}box.textContent='جارٍ إرسال رابط الاستعادة...';try{const {error}=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});if(error)throw error;box.textContent='تم طلب إرسال رابط الاستعادة. افتح الرسالة على هذا الهاتف.';}catch(e){box.textContent=e.message||'تعذر إرسال رابط الاستعادة.';}}
