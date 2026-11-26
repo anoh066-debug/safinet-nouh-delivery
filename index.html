@@ -260,7 +260,7 @@ async function submitDeliveryOrder(event){
    customer_name:order.customer_name, customer_phone:order.customer_phone,
    shop_name:order.shop_name, pickup_address:order.pickup_address,
    delivery_address:order.delivery_address, order_details:order.order_details,
-   order_status:'جديد'
+   status:'pending'
   });
   remote=true;
  }catch(e){remoteMessage=e.message||'لم يتم الاتصال بقاعدة البيانات'}
