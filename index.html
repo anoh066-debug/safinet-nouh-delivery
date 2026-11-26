@@ -227,10 +227,9 @@ if ("serviceWorker" in navigator) {
 <label for="checkoutAddress">عنوان التسليم</label><input id="checkoutAddress" required placeholder="المنطقة والعنوان بالتفصيل" oninput="syncDropAddress()">
 <label for="pickupAddress">عنوان المحل (مكان الاستلام)</label><input id="pickupAddress" readonly placeholder="يظهر تلقائيًا من بيانات المحل">
 <label for="dropAddress">عنوان التسليم</label><input id="dropAddress" placeholder="اكتب عنوانك بالتفصيل" oninput="document.getElementById('checkoutAddress').value=this.value;dropCoords=null;routeDistanceKm=null;customerInvoice=null">
-<p class="small">الخريطة هتحدد موقع المحل والعنوان، وتقدر تعدّل أي نقطة يدويًا بالضغط على الخريطة.</p>
+<p class="small">موقع المحل محفوظ مسبقًا من بيانات تسجيل صاحب المحل. حدّد عنوان التسليم فقط على الخريطة أو استخدم موقعك الحالي.</p>
 <div class="row" style="gap:8px;flex-wrap:wrap">
-<button class="action secondary" type="button" onclick="setMapPickMode('pickup')">تحديد موقع المحل على الخريطة</button>
-<button class="action secondary" type="button" onclick="setMapPickMode('drop')">تحديد موقعي على الخريطة</button>
+<button class="action secondary" type="button" onclick="setMapPickMode('drop')">تحديد موقع التسليم على الخريطة</button>
 <button class="action secondary" type="button" onclick="useMyCurrentLocation()">استخدم موقعي الحالي</button>
 </div>
 <div id="mapPickHint" class="small" aria-live="polite">اختار نقطة من الخريطة لو احتجت تعديل الموقع.</div>
