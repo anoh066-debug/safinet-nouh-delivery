@@ -465,7 +465,7 @@ if ("serviceWorker" in navigator) {
 <form class="form" id="merchantForm" onsubmit="registerShop(event)">
 <label for="merchantName">اسم المحل</label><input id="merchantName" required maxlength="120" placeholder="اسم المحل">
 <label for="merchantPhone">رقم هاتف المحل</label><input id="merchantPhone" required inputmode="tel" pattern="01[0-9]{9}" maxlength="11" placeholder="01xxxxxxxxx">
-<label for="merchantType">نشاط المحل</label><select id="merchantType" required><option value="">اختر النشاط</option><option>سوبر ماركت وبقالة</option><option>مطعم</option><option>مخبز</option><option>صيدلية</option><option>خضار وفاكهة</option><option>أدوات منزلية</option><option>أخرى</option></select>
+<label for="merchantType">نشاط المحل</label><select id="merchantType" required onchange="toggleMerchantOtherType()"><option value="">اختر النشاط</option><option>سوبر ماركت وبقالة</option><option>مطعم</option><option>مخبز</option><option>صيدلية</option><option>خضار وفاكهة</option><option>أدوات منزلية</option><option value="أخرى">أخرى</option></select><div id="merchantOtherTypeWrap" style="display:none"><label for="merchantOtherType">اكتب نوع التجارة أو المشروع</label><input id="merchantOtherType" maxlength="80" placeholder="مثال: محل ملابس أو مكتبة أو مغسلة"></div>
 <label for="merchantAddress">عنوان المحل داخل مدينة السادات</label><input id="merchantAddress" required maxlength="300" placeholder="المنطقة والشارع">
 <label>حدد موقع المحل على الخريطة (مطلوب)</label><div class="small">اضغط على مكان المحل في الخريطة، أو استخدم موقعك الحالي ثم حرّك العلامة للمكان الصحيح.</div><div class="merchant-map-actions"><button class="action secondary" type="button" onclick="useMerchantCurrentLocation()">استخدم موقعي الحالي</button><button class="action secondary" type="button" onclick="clearMerchantLocation()">مسح تحديد الموقع</button></div><div id="merchantMap" class="merchant-map-box"></div><div id="merchantMapStatus" class="small" aria-live="polite">لم يتم تحديد موقع المحل بعد.</div>
 <label for="merchantStorefrontImage">صورة واجهة المحل</label>
@@ -1107,16 +1107,22 @@ async function uploadShopRegistrationImage(shopId,file,label){
  if(error)throw error;
  return path;
 }
+function toggleMerchantOtherType(){
+ const select=document.getElementById('merchantType'),wrap=document.getElementById('merchantOtherTypeWrap'),input=document.getElementById('merchantOtherType');
+ const show=!!select&&select.value==='أخرى';
+ if(wrap)wrap.style.display=show?'block':'none';
+ if(input){input.required=show;if(!show)input.value='';}
+}
 async function registerShop(event){
  event.preventDefault();
  const form=event.currentTarget;
  const name=document.getElementById('merchantName').value.trim();
- const phone=document.getElementById('merchantPhone').value.trim(); const activity=document.getElementById('merchantType').value;
+ const phone=document.getElementById('merchantPhone').value.trim(); const selectedActivity=document.getElementById('merchantType').value; const otherActivity=document.getElementById('merchantOtherType').value.trim(); const activity=selectedActivity==='أخرى'?otherActivity:selectedActivity;
  const address=document.getElementById('merchantAddress').value.trim();
  const storefrontFile=document.getElementById('merchantStorefrontImage').files[0]||null;
  const productFiles=Array.from(document.getElementById('merchantProductImages').files||[]);
  const box=document.getElementById('merchantStatus');
- if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
+ if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||activity.length>80||!address||!storefrontFile){box.textContent=selectedActivity==='أخرى'&&!otherActivity?'اكتب نوع التجارة أو المشروع.':'أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
  if(productFiles.length>100){box.textContent='يمكنك اختيار 100 صورة للمنتجات كحد أقصى.';return;}
  const productDetails=productFiles.map((file,i)=>({file,name:document.querySelector('.merchant-product-name[data-index="'+i+'"]')?.value.trim()||'',price:document.querySelector('.merchant-product-price[data-index="'+i+'"]')?.value||'',description:document.querySelector('.merchant-product-description[data-index="'+i+'"]')?.value.trim()||''}));
  if(productDetails.some(p=>p.name.length<2||p.price===''||!Number.isFinite(Number(p.price))||Number(p.price)<0)){box.textContent='أكمل اسم وسعر كل منتج اخترت صورته، والوصف اختياري.';return;}
