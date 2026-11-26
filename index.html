@@ -741,6 +741,7 @@ let deliveryMap, routeLayer, pickupMarker, dropMarker;
 let routeDistanceKm = null;
 let customerCatalog = [];
 let customerSortByDistance = false;
+let customerSortMode = 'newest';
 let customerLocation = null;
 let customerCart = JSON.parse(localStorage.getItem("safinet_customer_cart") || "[]");
 let customerInvoice = null;
@@ -846,7 +847,7 @@ async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
  try{
-  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type&is_active=eq.true&order=shop_name.asc');
+  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type,created_at&is_active=eq.true&order=created_at.desc');
   customerCatalog=[];
   for(const shop of shops){
    const products=await sbRequest('products?select=id,name,price,description&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
@@ -892,10 +893,11 @@ function renderCustomerCatalog(){
  customerCatalog.forEach(shop=>{const key=getCustomerCategory(shop.activity_type);counts[key]=(counts[key]||0)+1;});
  const selected=CUSTOMER_CATEGORIES.find(c=>c.key===selectedCustomerCategory);
  const visible=selectedCustomerCategory==='all'?customerCatalog:customerCatalog.filter(shop=>getCustomerCategory(shop.activity_type)===selectedCustomerCategory);
- if(customerSortByDistance)visible.sort((a,b)=>{const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;return da-db;});
+ if(customerSortMode==='nearest')visible.sort((a,b)=>{const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;return da-db;});
+ else if(customerSortMode==='newest')visible.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  const categoryButtons='<button type="button" class="category-tile '+(selectedCustomerCategory==='all'?'active':'')+'" onclick="selectCustomerCategory(\'all\')"><span style="font-size:25px">🧺</span><strong>كل المحلات</strong><small>'+customerCatalog.length+' محل</small></button>'+CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile '+(selectedCustomerCategory===c.key?'active':'')+'" onclick="selectCustomerCategory(\''+c.key+'\')"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
  const shopCards=visible.map(shop=>'<div class="shop-card"><div class="shop-card-title">🏪 '+escapeText(shop.name)+'</div><div class="shop-card-meta">'+escapeText(shop.address||'العنوان غير مضاف')+' · '+escapeText(shop.activity_type||'النشاط غير محدد')+(customerSortByDistance&&Number.isFinite(shop.distanceKm)?' · يبعد عنك حوالي '+shop.distanceKm.toFixed(1)+' كم':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:9px 0"><span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
- box.innerHTML='<div class="customer-catalog-intro"><h2>تسوق من محلات السادات</h2><p>اختار القسم المناسب، تصفح المحلات، وأضف احتياجاتك إلى السلة بسهولة.</p><button class="action secondary" type="button" style="width:100%;margin-top:10px" onclick="sortCustomerShopsByNearest()">📍 رتّب المحلات حسب الأقرب لموقعي</button><div id="shopDistanceStatus" class="small" aria-live="polite" style="margin-top:8px;color:#fff"></div></div><div class="category-grid">'+categoryButtons+'</div><div class="category-toolbar"><h3>'+(selectedCustomerCategory==='all'?'كل المحلات':selected.icon+' '+selected.name)+'</h3>'+(selectedCustomerCategory!=='all'?'<button class="category-back" type="button" onclick="selectCustomerCategory(\'all\')">عرض كل الأقسام</button>':'')+'</div>'+(visible.length?shopCards:'<div class="catalog-empty">لا توجد محلات معتمدة في هذا القسم حاليًا.<br><small>هنضيف المحلات هنا بمجرد اعتمادها وتحديد نشاطها.</small></div>');
+ box.innerHTML='<div class="customer-catalog-intro"><h2>تسوق من محلات السادات</h2><p>اختار القسم المناسب، تصفح المحلات، وأضف احتياجاتك إلى السلة بسهولة.</p><div id="shopDistanceStatus" class="small" aria-live="polite" style="margin-top:8px;color:#fff"></div></div><div class="category-grid">'+categoryButtons+'</div><div class="category-toolbar"><h3>'+(selectedCustomerCategory==='all'?'كل المحلات':selected.icon+' '+selected.name)+'</h3><label style="display:flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap">ترتيب <select id="customerShopSort" onchange="changeCustomerShopSort(this.value)" style="max-width:145px;padding:7px;border-radius:9px;border:1px solid #ccd6e5"><option value="newest" '+(customerSortMode==='newest'?'selected':'')+'>الأحدث</option><option value="nearest" '+(customerSortMode==='nearest'?'selected':'')+'>الأقرب لموقعي</option></select></label>'+(selectedCustomerCategory!=='all'?'<button class="category-back" type="button" onclick="selectCustomerCategory(\'all\')">عرض كل الأقسام</button>':'')+'</div>'+(visible.length?shopCards:'<div class="catalog-empty">لا توجد محلات معتمدة في هذا القسم حاليًا.<br><small>هنضيف المحلات هنا بمجرد اعتمادها وتحديد نشاطها.</small></div>');
 }
 async function sortCustomerShopsByNearest(){
  const status=document.getElementById('shopDistanceStatus');
@@ -928,6 +930,7 @@ async function sortCustomerShopsByNearest(){
    }
   }
   customerSortByDistance=true;
+  customerSortMode='nearest';
   renderCustomerCatalog();
   const known=customerCatalog.filter(x=>Number.isFinite(x.distanceKm)).length;
   const resultStatus=document.getElementById('shopDistanceStatus');
@@ -935,6 +938,12 @@ async function sortCustomerShopsByNearest(){
  },err=>{
   if(status)status.textContent=err&&err.code===1?'لم تسمح بالوصول إلى موقعك. فعّل إذن الموقع للتطبيق ثم حاول مرة أخرى.':'تعذر تحديد موقعك الآن. تأكد من تشغيل GPS والإنترنت ثم حاول مرة أخرى.';
  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+}
+function changeCustomerShopSort(mode){
+ customerSortMode=mode;
+ if(mode==='nearest'){sortCustomerShopsByNearest();return;}
+ customerSortByDistance=false;
+ renderCustomerCatalog();
 }
 function selectCustomerCategory(key){selectedCustomerCategory=key;renderCustomerCatalog();}
 function addCustomerProduct(shopId,productId){
