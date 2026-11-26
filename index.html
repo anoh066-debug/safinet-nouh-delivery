@@ -491,21 +491,47 @@ async function renderAdmin(){
 async function editShop(id){
  try{
   await requireAdminSession();
-  const rows=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_registered,is_active&id=eq.'+encodeURIComponent(id));
+  const rows=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,storefront_image_path,product_image_paths,is_registered,is_active&id=eq.'+encodeURIComponent(id));
   const shop=rows&&rows[0];if(!shop)throw new Error('لم يتم العثور على المحل.');
-  const name=prompt('اسم المحل:',shop.shop_name||'');if(name===null)return;
-  const phone=prompt('رقم هاتف المحل:',shop.phone||'');if(phone===null)return;
-  const activity=prompt('نشاط المحل:',shop.activity_type||'');if(activity===null)return;
-  const address=prompt('عنوان المحل:',shop.address||'');if(address===null)return;
-  if(!name.trim()){alert('اسم المحل مطلوب.');return;}
-  if(phone.trim()&&!/^01[0-9]{9}$/.test(phone.trim())){alert('رقم الهاتف يجب أن يكون 11 رقمًا ويبدأ بـ 01.');return;}
-  const approve=confirm('هل تريد حفظ البيانات واعتماد المحل ليظهر للعملاء؟\nاضغط موافق للحفظ والاعتماد، أو إلغاء للحفظ فقط.');
-  const update={shop_name:name.trim(),phone:phone.trim()||null,activity_type:activity.trim()||null,address:address.trim()||null};
-  if(approve){update.is_registered=true;update.is_active=true;}
-  await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',update);
-  alert(approve?'تم حفظ البيانات واعتماد المحل بنجاح.':'تم حفظ بيانات المحل فقط.');
-  await renderRegisteredShops();
- }catch(e){alert('تعذر تنفيذ مراجعة المحل: '+(e.message||'خطأ في الاتصال'));}
+  const paths=[shop.storefront_image_path,...(Array.isArray(shop.product_image_paths)?shop.product_image_paths:[])].filter(Boolean);
+  const previews=paths.map((path,i)=>{const url=sbClient.storage.from('shop-images').getPublicUrl(path).data.publicUrl;return '<a href="'+escapeText(url)+'" target="_blank" rel="noopener"><img src="'+escapeText(url)+'" alt="'+(i===0?'واجهة المحل':'صورة منتج')+'" style="width:76px;height:76px;object-fit:cover;border-radius:10px;margin:4px"></a>';}).join('');
+  const modal=document.getElementById('shopEditModal');if(modal)modal.remove();
+  document.body.insertAdjacentHTML('beforeend','<div id="shopEditModal" style="position:fixed;inset:0;z-index:9999;background:#0009;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto"><form onsubmit="saveShopEdit(event,'+JSON.stringify(shop.id)+')" style="background:var(--card,#fff);color:var(--text,#222);width:min(100%,520px);max-height:92vh;overflow:auto;border-radius:16px;padding:18px"><h3>تعديل بيانات وصور المحل</h3><label>اسم المحل</label><input id="shopEditName" required value="'+escapeText(shop.shop_name||'')+'" style="width:100%;margin:5px 0 12px"><label>رقم الهاتف</label><input id="shopEditPhone" value="'+escapeText(shop.phone||'')+'" style="width:100%;margin:5px 0 12px"><label>نشاط المحل</label><input id="shopEditActivity" value="'+escapeText(shop.activity_type||'')+'" style="width:100%;margin:5px 0 12px"><label>العنوان</label><textarea id="shopEditAddress" style="width:100%;margin:5px 0 12px">'+escapeText(shop.address||'')+'</textarea><hr><b>صورة واجهة المحل الحالية</b><div>'+ (shop.storefront_image_path?previews.split('</a>')[0]+'</a>':'<small>لا توجد صورة محفوظة</small>')+'</div><label>تغيير صورة الواجهة (اختياري)</label><input id="shopEditStorefront" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewShopEditImages()" style="width:100%;margin:6px 0 12px"><div id="shopEditStorefrontPreview"></div><hr><b>صور المنتجات الحالية</b><div>'+(Array.isArray(shop.product_image_paths)&&shop.product_image_paths.length?shop.product_image_paths.map(path=>{const u=sbClient.storage.from('shop-images').getPublicUrl(path).data.publicUrl;return '<a href="'+escapeText(u)+'" target="_blank" rel="noopener"><img src="'+escapeText(u)+'" style="width:76px;height:76px;object-fit:cover;border-radius:10px;margin:4px"></a>';}).join(''):'<small>لا توجد صور منتجات محفوظة</small>')+'</div><label>استبدال صور المنتجات (اختياري — اختر الصور الجديدة كلها)</label><input id="shopEditProducts" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewShopEditImages()" style="width:100%;margin:6px 0 12px"><div id="shopEditProductsPreview"></div><small>إذا لم تختر صورًا جديدة، ستظل الصور الحالية كما هي. الحد الأقصى 100 صورة، وحجم الصورة 5 ميجابايت.</small><div id="shopEditStatus" style="margin:12px 0"></div><div class="row" style="gap:8px"><button class="action" type="submit">حفظ التعديلات</button><button class="action secondary" type="button" onclick="document.getElementById(\'shopEditModal\').remove()">إلغاء</button></div></form></div>');
+  window.currentShopEditId=shop.id;
+ }catch(e){alert('تعذر فتح تعديل المحل: '+(e.message||'خطأ في الاتصال'));}
+}
+function previewShopEditImages(){
+ const draw=(id,files)=>{const box=document.getElementById(id);if(!box)return;box.innerHTML='';Array.from(files||[]).forEach(file=>{if(!file||!file.type.startsWith('image/'))return;const img=document.createElement('img');img.src=URL.createObjectURL(file);img.onload=()=>URL.revokeObjectURL(img.src);img.style='width:76px;height:76px;object-fit:cover;border-radius:10px;margin:4px';box.appendChild(img);});};
+ const sf=document.getElementById('shopEditStorefront'),pr=document.getElementById('shopEditProducts');
+ draw('shopEditStorefrontPreview',sf&&sf.files?Array.from(sf.files).slice(0,1):[]);
+ draw('shopEditProductsPreview',pr&&pr.files?Array.from(pr.files).slice(0,100):[]);
+}
+async function saveShopEdit(event,id){
+ event.preventDefault();
+ const status=document.getElementById('shopEditStatus'),form=event.currentTarget;
+ const name=document.getElementById('shopEditName').value.trim(),phone=document.getElementById('shopEditPhone').value.trim();
+ const activity=document.getElementById('shopEditActivity').value.trim(),address=document.getElementById('shopEditAddress').value.trim();
+ const storefront=document.getElementById('shopEditStorefront').files[0]||null,products=Array.from(document.getElementById('shopEditProducts').files||[]);
+ if(!name){alert('اسم المحل مطلوب.');return;}
+ if(phone&&!/^01[0-9]{9}$/.test(phone)){alert('رقم الهاتف يجب أن يكون 11 رقمًا ويبدأ بـ 01.');return;}
+ if(products.length>100){alert('يمكن اختيار 100 صورة منتجات كحد أقصى.');return;}
+ try{
+  if(storefront)validateShopImage(storefront);products.forEach(validateShopImage);
+  form.querySelectorAll('button').forEach(b=>b.disabled=true);status.textContent='جارٍ حفظ البيانات ورفع الصور...';
+  await requireAdminSession();
+  const rows=await sbRequest('shops?select=storefront_image_path,product_image_paths&id=eq.'+encodeURIComponent(id));
+  const current=rows&&rows[0];if(!current)throw new Error('لم يتم العثور على بيانات الصور الحالية.');
+  const update={shop_name:name,phone:phone||null,activity_type:activity||null,address:address||null};
+  const uploaded=[];
+  try{
+   if(storefront){const p=await uploadShopRegistrationImage(id,storefront,'storefront-edit');uploaded.push(p);update.storefront_image_path=p;}
+   if(products.length){const newPaths=[];for(let i=0;i<products.length;i++){const p=await uploadShopRegistrationImage(id,products[i],'product-edit-'+(i+1));uploaded.push(p);newPaths.push(p);}update.product_image_paths=newPaths;}
+   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',update);
+  }catch(e){if(uploaded.length)await sbClient.storage.from('shop-images').remove(uploaded).catch(()=>{});throw e;}
+  alert('تم حفظ بيانات المحل والصور بنجاح.');
+  const modal=document.getElementById('shopEditModal');if(modal)modal.remove();
+  await renderRegisteredShops();await renderShopApprovals();
+ }catch(e){status.textContent='تعذر الحفظ: '+(e.message||'خطأ في الاتصال');form.querySelectorAll('button').forEach(b=>b.disabled=false);}
 }
 async function deleteShop(id){
  if(!confirm('هل أنت متأكد من حذف هذا المحل نهائيًا؟ قد تمنع قاعدة البيانات الحذف إذا كان مرتبطًا بطلبات سابقة.'))return;
