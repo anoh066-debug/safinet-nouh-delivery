@@ -282,9 +282,9 @@ if ("serviceWorker" in navigator) {
 <input id="merchantStorefrontImage" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewShopRegistrationImages()">
 <div class="shop-image-help">اختار صورة واضحة لواجهة المحل. الحد الأقصى 5 ميجابايت للصورة.</div>
 <div id="merchantStorefrontPreview" class="shop-image-preview" aria-live="polite"></div>
-<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 100 صورة)</label>
+<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 100 منتج)</label>
 <input id="merchantProductImages" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewShopRegistrationImages()">
-<div class="shop-image-help">يمكن إضافة حتى 100 صورة لمنتجات المحل، وكل صورة حتى 5 ميجابايت.</div>
+<div class="shop-image-help">لكل صورة ستظهر خانات اسم المنتج والسعر والوصف. الحد الأقصى 100 منتج، وكل صورة حتى 5 ميجابايت.</div>
 <div id="merchantProductsPreview" class="shop-image-preview" aria-live="polite"></div>
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
@@ -774,20 +774,10 @@ function previewShopRegistrationImages(){
  const products=document.getElementById('merchantProductImages');
  const one=document.getElementById('merchantStorefrontPreview');
  const many=document.getElementById('merchantProductsPreview');
- const draw=(box,files)=>{
-  if(!box)return;
-  box.innerHTML='';
-  Array.from(files||[]).forEach(file=>{
-   if(!file||!file.type.startsWith('image/'))return;
-   const img=document.createElement('img');
-   img.alt='معاينة الصورة المختارة';
-   img.src=URL.createObjectURL(file);
-   img.onload=()=>URL.revokeObjectURL(img.src);
-   box.appendChild(img);
-  });
- };
- draw(one,storefront&&storefront.files?Array.from(storefront.files).slice(0,1):[]);
- draw(many,products&&products.files?Array.from(products.files).slice(0,100):[]);
+ if(one){one.innerHTML='';const file=storefront&&storefront.files?storefront.files[0]:null;if(file){const img=document.createElement('img');img.alt='معاينة واجهة المحل';img.src=URL.createObjectURL(file);img.onload=()=>URL.revokeObjectURL(img.src);one.appendChild(img);}}
+ if(!many)return;
+ const files=Array.from(products&&products.files?products.files:[]).slice(0,100);
+ many.innerHTML=files.map((file,i)=>'<div class="record" style="margin:10px 0;padding:12px"><div style="display:flex;gap:10px;align-items:center"><img src="'+URL.createObjectURL(file)+'" alt="صورة المنتج '+(i+1)+'" style="width:86px;height:86px;object-fit:cover;border-radius:10px"><b>بيانات المنتج رقم '+(i+1)+'</b></div><label>اسم المنتج</label><input class="merchant-product-name" data-index="'+i+'" required maxlength="120" placeholder="مثال: مياه معدنية"><label>السعر بالجنيه</label><input class="merchant-product-price" data-index="'+i+'" type="number" required min="0" max="1000000" step="0.01" inputmode="decimal" placeholder="مثال: 15"><label>وصف المنتج</label><textarea class="merchant-product-description" data-index="'+i+'" required maxlength="500" rows="2" placeholder="اكتب وصفًا مختصرًا للمنتج"></textarea></div>').join('');
 }
 function validateShopImage(file){
  if(!file)return;
@@ -814,49 +804,37 @@ async function registerShop(event){
  const box=document.getElementById('merchantStatus');
  if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
  if(productFiles.length>100){box.textContent='يمكنك اختيار 100 صورة للمنتجات كحد أقصى.';return;}
+ const productDetails=productFiles.map((file,i)=>({file,name:document.querySelector('.merchant-product-name[data-index="'+i+'"]')?.value.trim()||'',price:document.querySelector('.merchant-product-price[data-index="'+i+'"]')?.value||'',description:document.querySelector('.merchant-product-description[data-index="'+i+'"]')?.value.trim()||''}));
+ if(productDetails.some(p=>p.name.length<2||p.description.length<2||p.price===''||!Number.isFinite(Number(p.price))||Number(p.price)<0)){box.textContent='أكمل اسم وسعر ووصف كل منتج اخترت صورته.';return;}
  try{
-  validateShopImage(storefrontFile);
-  productFiles.forEach(validateShopImage);
+  validateShopImage(storefrontFile);productFiles.forEach(validateShopImage);
   if(!initSupabaseAuth())throw new Error('تعذر الاتصال بخدمة التسجيل الآمن.');
-  box.textContent='جارٍ تجهيز تسجيل المحل ورفع الصور...';
+  box.textContent='جارٍ تجهيز تسجيل المحل ورفع الصور والمنتجات...';
   let {data:{session},error:sessionError}=await sbClient.auth.getSession();
   if(sessionError)throw sessionError;
-  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')
-   throw new Error('افتح نموذج تسجيل المحل من نافذة خاصة أو سجّل الخروج من حساب الإدارة أولاً.');
-  if(!session){
-   const {data,error}=await sbClient.auth.signInAnonymously();
-   if(error)throw new Error('تعذر بدء جلسة التسجيل الآمنة. '+error.message);
-   session=data.session;
-  }
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')throw new Error('افتح نموذج تسجيل المحل من نافذة خاصة أو سجّل الخروج من حساب الإدارة أولاً.');
+  if(!session){const {data,error}=await sbClient.auth.signInAnonymously();if(error)throw new Error('تعذر بدء جلسة التسجيل الآمنة. '+error.message);session=data.session;}
   if(!session||!session.user)throw new Error('لم يتم إنشاء جلسة تسجيل آمنة.');
-  const {data:shopId,error:registerError}=await sbClient.rpc('register_shop_with_owner',{
-   p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address
-  });
-  if(registerError)throw registerError;
-  if(!shopId)throw new Error('لم يصل رقم طلب المحل من قاعدة البيانات.');
+  const {data:shopId,error:registerError}=await sbClient.rpc('register_shop_with_owner',{p_shop_name:name,p_phone:phone,p_activity_type:activity,p_address:address});
+  if(registerError)throw registerError;if(!shopId)throw new Error('لم يصل رقم طلب المحل من قاعدة البيانات.');
   const uploaded=[];
   try{
-   const storefrontPath=await uploadShopRegistrationImage(shopId,storefrontFile,'storefront');
-   uploaded.push(storefrontPath);
-   const productPaths=[];
-   for(let i=0;i<productFiles.length;i++){
-    const path=await uploadShopRegistrationImage(shopId,productFiles[i],'product-'+(i+1));
-    uploaded.push(path);productPaths.push(path);
+   const storefrontPath=await uploadShopRegistrationImage(shopId,storefrontFile,'storefront');uploaded.push(storefrontPath);
+   const productPaths=[],productsToSave=[];
+   for(let i=0;i<productDetails.length;i++){
+    const item=productDetails[i],path=await uploadShopRegistrationImage(shopId,item.file,'product-'+(i+1));uploaded.push(path);productPaths.push(path);
+    productsToSave.push({name:item.name,price:Number(item.price),description:item.description,image_path:path});
    }
-   const {error:imageSaveError}=await sbClient.rpc('save_shop_registration_images',{
-    p_shop_id:shopId,p_storefront_path:storefrontPath,p_product_paths:productPaths
-   });
+   const {error:imageSaveError}=await sbClient.rpc('save_shop_registration_images',{p_shop_id:shopId,p_storefront_path:storefrontPath,p_product_paths:productPaths});
    if(imageSaveError)throw imageSaveError;
+   if(productsToSave.length){const {error:productsError}=await sbClient.rpc('save_shop_products',{p_shop_id:shopId,p_products:productsToSave});if(productsError)throw productsError;}
   }catch(imageError){
    if(uploaded.length)await sbClient.storage.from('shop-images').remove(uploaded).catch(()=>{});
-   throw new Error('تم حفظ بيانات الطلب، لكن لم تكتمل عملية رفع الصور: '+(imageError.message||'خطأ غير معروف')+'. أعد الإرسال بنفس رقم الهاتف لإكمال الصور.');
+   throw new Error('تعذر حفظ صور أو بيانات المنتجات: '+(imageError.message||'خطأ غير معروف')+'. راجع البيانات وحاول مرة أخرى.');
   }
-  form.reset();
-  previewShopRegistrationImages();
-  box.textContent='تم إرسال طلب تسجيل المحل وصوره بنجاح. سيظل غير ظاهر للعملاء حتى اعتماد الإدارة.';
- }catch(e){
-  box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';
- }
+  form.reset();previewShopRegistrationImages();
+  box.textContent='تم إرسال طلب المحل وصوره وبيانات المنتجات بنجاح. سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+ }catch(e){box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';}
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function clearRegistrations(){if(confirm('هل تريد مسح النسخة المحلية الاحتياطية؟ لن يتم حذف بيانات قاعدة البيانات.')){localStorage.removeItem('safinet_registrations');renderAdmin()}}
@@ -976,7 +954,7 @@ async function loadCustomerCatalog(){
   const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type,created_at&is_active=eq.true&order=created_at.desc');
   customerCatalog=[];
   for(const shop of shops){
-   const products=await sbRequest('products?select=id,name,price,description&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
+   const products=await sbRequest('products?select=id,name,price,description,image_path&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
    customerCatalog.push({...shop,products});
   }
   renderCustomerCatalog();
@@ -1022,7 +1000,7 @@ function renderCustomerCatalog(){
  if(customerSortMode==='nearest')visible.sort((a,b)=>{const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;return da-db;});
  else if(customerSortMode==='newest')visible.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  const categoryButtons='<button type="button" class="category-tile '+(selectedCustomerCategory==='all'?'active':'')+'" onclick="selectCustomerCategory(\'all\')"><span style="font-size:25px">🧺</span><strong>كل المحلات</strong><small>'+customerCatalog.length+' محل</small></button>'+CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile '+(selectedCustomerCategory===c.key?'active':'')+'" onclick="selectCustomerCategory(\''+c.key+'\')"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
- const shopCards=visible.map(shop=>'<div class="shop-card"><div class="shop-card-title">🏪 '+escapeText(shop.name)+'</div><div class="shop-card-meta">'+escapeText(shop.address||'العنوان غير مضاف')+' · '+escapeText(shop.activity_type||'النشاط غير محدد')+(customerSortByDistance&&Number.isFinite(shop.distanceKm)?' · يبعد عنك حوالي '+shop.distanceKm.toFixed(1)+' كم':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:9px 0"><span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div class="row" style="justify-content:space-between;gap:8px;border-top:1px solid #dce6f5;padding:9px 0"><span>'+escapeText(p.name)+'<br><b>'+Number(p.price).toFixed(2)+' جنيه</b></span><button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
+ const shopCards=visible.map(shop=>'<div class="shop-card"><div class="shop-card-title">🏪 '+escapeText(shop.name)+'</div><div class="shop-card-meta">'+escapeText(shop.address||'العنوان غير مضاف')+' · '+escapeText(shop.activity_type||'النشاط غير محدد')+(customerSortByDistance&&Number.isFinite(shop.distanceKm)?' · يبعد عنك حوالي '+shop.distanceKm.toFixed(1)+' كم':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:9px 0"><span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div style="border-top:1px solid #dce6f5;padding:10px 0;display:flex;gap:10px;align-items:flex-start">'+(p.image_path?'<img src="'+escapeText(sbClient.storage.from('shop-images').getPublicUrl(p.image_path).data.publicUrl)+'" alt="'+escapeText(p.name)+'" style="width:82px;height:82px;object-fit:cover;border-radius:10px">':'')+'<div style="flex:1"><b>'+escapeText(p.name)+'</b><br><b>'+Number(p.price).toFixed(2)+' جنيه</b>'+(p.description?'<p class="small" style="margin:4px 0">'+escapeText(p.description)+'</p>':'')+'<button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
  box.innerHTML='<div class="customer-catalog-intro"><h2>تسوق من محلات السادات</h2><p>اختار القسم المناسب، تصفح المحلات، وأضف احتياجاتك إلى السلة بسهولة.</p><div id="shopDistanceStatus" class="small" aria-live="polite" style="margin-top:8px;color:#fff"></div></div><div class="category-grid">'+categoryButtons+'</div><div class="category-toolbar"><h3>'+(selectedCustomerCategory==='all'?'كل المحلات':selected.icon+' '+selected.name)+'</h3><label style="display:flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap">ترتيب <select id="customerShopSort" onchange="changeCustomerShopSort(this.value)" style="max-width:145px;padding:7px;border-radius:9px;border:1px solid #ccd6e5"><option value="newest" '+(customerSortMode==='newest'?'selected':'')+'>الأحدث</option><option value="nearest" '+(customerSortMode==='nearest'?'selected':'')+'>الأقرب لموقعي</option></select></label>'+(selectedCustomerCategory!=='all'?'<button class="category-back" type="button" onclick="selectCustomerCategory(\'all\')">عرض كل الأقسام</button>':'')+'</div>'+(visible.length?shopCards:'<div class="catalog-empty">لا توجد محلات معتمدة في هذا القسم حاليًا.<br><small>هنضيف المحلات هنا بمجرد اعتمادها وتحديد نشاطها.</small></div>');
 }
 async function sortCustomerShopsByNearest(){
