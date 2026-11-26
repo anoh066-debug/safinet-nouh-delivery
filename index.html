@@ -166,6 +166,14 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 #admin .admin-subpage .row{align-items:center}
 #admin #adminRiderTrackingMap{border:1px solid #d6e2f0;border-radius:16px;overflow:hidden}
 #admin .admin-subpage form{padding:12px 0}
+/* زر إلغاء صورة المنتج قبل إرسال تسجيل المحل */
+.merchant-product-remove{
+ position:absolute;top:8px;left:8px;z-index:2;width:32px;height:32px;
+ border:0;border-radius:50%;background:#b83232;color:#fff;
+ font-size:23px;line-height:1;display:flex;align-items:center;justify-content:center;
+ box-shadow:0 2px 7px #0003;cursor:pointer;
+}
+.merchant-product-remove:active{transform:scale(.94)}
 /* لمسات فخامة إضافية للوحة الإدارة */
 #admin.screen.active{
  background:
@@ -1063,7 +1071,28 @@ function previewShopRegistrationImages(){
  if(one){one.innerHTML='';const file=storefront&&storefront.files?storefront.files[0]:null;if(file){const img=document.createElement('img');img.alt='معاينة واجهة المحل';img.src=URL.createObjectURL(file);img.onload=()=>URL.revokeObjectURL(img.src);one.appendChild(img);}}
  if(!many)return;
  const files=Array.from(products&&products.files?products.files:[]).slice(0,100);
- many.innerHTML=files.map((file,i)=>'<div class="record" style="margin:10px 0;padding:12px"><div style="display:flex;gap:10px;align-items:center"><img src="'+URL.createObjectURL(file)+'" alt="صورة المنتج '+(i+1)+'" style="width:86px;height:86px;object-fit:cover;border-radius:10px"><b>بيانات المنتج رقم '+(i+1)+'</b></div><label>اسم المنتج</label><input class="merchant-product-name" data-index="'+i+'" required maxlength="120" placeholder="مثال: مياه معدنية"><label>السعر بالجنيه</label><input class="merchant-product-price" data-index="'+i+'" type="number" required min="0" max="1000000" step="0.01" inputmode="decimal" placeholder="مثال: 15"><label>وصف المنتج</label><textarea class="merchant-product-description" data-index="'+i+'" required maxlength="500" rows="2" placeholder="اكتب وصفًا مختصرًا للمنتج"></textarea></div>').join('');
+ many.innerHTML=files.map((file,i)=>'<div class="record merchant-product-card" style="margin:10px 0;padding:12px;position:relative"><button type="button" class="merchant-product-remove" onclick="removeShopProductImage('+i+')" aria-label="حذف صورة المنتج '+(i+1)+'" title="إلغاء اختيار هذه الصورة">×</button><div style="display:flex;gap:10px;align-items:center"><img src="'+URL.createObjectURL(file)+'" alt="صورة المنتج '+(i+1)+'" style="width:86px;height:86px;object-fit:cover;border-radius:10px"><b>بيانات المنتج رقم '+(i+1)+'</b></div><label>اسم المنتج</label><input class="merchant-product-name" data-index="'+i+'" required maxlength="120" placeholder="مثال: مياه معدنية"><label>السعر بالجنيه</label><input class="merchant-product-price" data-index="'+i+'" type="number" required min="0" max="1000000" step="0.01" inputmode="decimal" placeholder="مثال: 15"><label>وصف المنتج (اختياري)</label><textarea class="merchant-product-description" data-index="'+i+'" maxlength="500" rows="2" placeholder="يمكنك ترك الوصف فارغًا"></textarea></div>').join('');
+}
+function removeShopProductImage(index){
+ const input=document.getElementById('merchantProductImages');
+ if(!input||!input.files||index<0||index>=input.files.length)return;
+ const oldFiles=Array.from(input.files),details=oldFiles.map((file,i)=>({
+  name:document.querySelector('.merchant-product-name[data-index="'+i+'"]')?.value||'',
+  price:document.querySelector('.merchant-product-price[data-index="'+i+'"]')?.value||'',
+  description:document.querySelector('.merchant-product-description[data-index="'+i+'"]')?.value||''
+ }));
+ const transfer=new DataTransfer();
+ oldFiles.forEach((file,i)=>{if(i!==index)transfer.items.add(file);});
+ input.files=transfer.files;
+ previewShopRegistrationImages();
+ oldFiles.forEach((file,i)=>{
+  if(i===index)return;
+  const next=i>index?i-1:i,d=details[i];
+  const name=document.querySelector('.merchant-product-name[data-index="'+next+'"]');
+  const price=document.querySelector('.merchant-product-price[data-index="'+next+'"]');
+  const description=document.querySelector('.merchant-product-description[data-index="'+next+'"]');
+  if(name)name.value=d.name;if(price)price.value=d.price;if(description)description.value=d.description;
+ });
 }
 function validateShopImage(file){
  if(!file)return;
@@ -1090,7 +1119,7 @@ async function registerShop(event){
  if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
  if(productFiles.length>100){box.textContent='يمكنك اختيار 100 صورة للمنتجات كحد أقصى.';return;}
  const productDetails=productFiles.map((file,i)=>({file,name:document.querySelector('.merchant-product-name[data-index="'+i+'"]')?.value.trim()||'',price:document.querySelector('.merchant-product-price[data-index="'+i+'"]')?.value||'',description:document.querySelector('.merchant-product-description[data-index="'+i+'"]')?.value.trim()||''}));
- if(productDetails.some(p=>p.name.length<2||p.description.length<2||p.price===''||!Number.isFinite(Number(p.price))||Number(p.price)<0)){box.textContent='أكمل اسم وسعر ووصف كل منتج اخترت صورته.';return;}
+ if(productDetails.some(p=>p.name.length<2||p.price===''||!Number.isFinite(Number(p.price))||Number(p.price)<0)){box.textContent='أكمل اسم وسعر كل منتج اخترت صورته، والوصف اختياري.';return;}
  try{
   validateShopImage(storefrontFile);productFiles.forEach(validateShopImage);
   if(!initSupabaseAuth())throw new Error('تعذر الاتصال بخدمة التسجيل الآمن.');
