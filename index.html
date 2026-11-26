@@ -282,9 +282,9 @@ if ("serviceWorker" in navigator) {
 <input id="merchantStorefrontImage" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewShopRegistrationImages()">
 <div class="shop-image-help">اختار صورة واضحة لواجهة المحل. الحد الأقصى 5 ميجابايت للصورة.</div>
 <div id="merchantStorefrontPreview" class="shop-image-preview" aria-live="polite"></div>
-<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 10 صور)</label>
+<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 100 صورة)</label>
 <input id="merchantProductImages" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewShopRegistrationImages()">
-<div class="shop-image-help">تقدر تختار صورة واحدة أو أكثر للمنتجات، بحد أقصى 10 صور، وكل صورة حتى 5 ميجابايت.</div>
+<div class="shop-image-help">يمكن إضافة حتى 100 صورة لمنتجات المحل، وكل صورة حتى 5 ميجابايت.</div>
 <div id="merchantProductsPreview" class="shop-image-preview" aria-live="polite"></div>
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
@@ -452,6 +452,14 @@ async function registerUser(event,type){
 }
 function riderDocumentButton(label,path){if(!path)return '';return '<button class="action secondary" type="button" style="margin:4px" onclick="openRiderDocument(\''+encodeURIComponent(path)+'\')">'+escapeText(label)+'</button>';}
 async function openRiderDocument(encodedPath){try{await requireAdminSession();const path=decodeURIComponent(encodedPath);const {data,error}=await sbClient.storage.from('rider-private-documents').createSignedUrl(path,120);if(error)throw error;window.open(data.signedUrl,'_blank','noopener');}catch(e){alert('تعذر فتح المستند: '+(e.message||'تحقق من صلاحية الإدارة'));}}
+let adminShopRecords=[];
+function filterAdminShops(value){
+ const box=document.getElementById('adminShopsList');
+ if(!box)return;
+ const q=String(value||'').trim().toLocaleLowerCase();
+ const rows=adminShopRecords.filter(x=>[x.shop_name,x.phone,x.activity_type,x.address].some(v=>String(v||'').toLocaleLowerCase().includes(q)));
+ box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" type="button" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button><button class="action secondary" type="button" onclick="deleteShop('+JSON.stringify(x.id)+')">حذف المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
+}
 async function renderAdmin(){
  const box=document.getElementById('adminData');
  if(!box){alert('تعذر العثور على مساحة عرض بيانات الإدارة.');return;}
@@ -460,10 +468,12 @@ async function renderAdmin(){
   await requireAdminSession();
   box.textContent='جارٍ تحميل التسجيلات والمحلات...';
   const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,national_id,national_id_front_path,national_id_back_path,vehicle_photo_path,driving_license_front_path,vehicle_license_front_path,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&order=shop_name.asc')]);
+  adminShopRecords=shops||[];
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
   html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
-  html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" type="button" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">مراجعة / تعديل المحل</button></div></div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
+  html+='<h3>المحلات ('+shops.length+')</h3><label for="adminShopSearch">البحث عن محل بالاسم أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList"></div>';
   box.innerHTML=html;
+  filterAdminShops('');
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
 async function editShop(id){
@@ -471,15 +481,6 @@ async function editShop(id){
   await requireAdminSession();
   const rows=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_registered,is_active&id=eq.'+encodeURIComponent(id));
   const shop=rows&&rows[0];if(!shop)throw new Error('لم يتم العثور على المحل.');
-  const choice=prompt('مراجعة المحل: اكتب رقم الاختيار\n1 - تعديل البيانات\n2 - حذف المحل\n3 - إلغاء','1');
-  if(choice===null||choice.trim()==='3')return;
-  if(choice.trim()==='2'){
-   if(!confirm('تأكيد حذف المحل نهائيًا؟ إذا كان مرتبطًا بطلبات سابقة قد ترفض قاعدة البيانات الحذف حفاظًا على السجلات.'))return;
-   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'DELETE');
-   alert('تم حذف المحل.');
-   await renderAdmin();await renderShopApprovals();return;
-  }
-  if(choice.trim()!=='1'){alert('اختيار غير صحيح.');return;}
   const name=prompt('اسم المحل:',shop.shop_name||'');if(name===null)return;
   const phone=prompt('رقم هاتف المحل:',shop.phone||'');if(phone===null)return;
   const activity=prompt('نشاط المحل:',shop.activity_type||'');if(activity===null)return;
@@ -748,7 +749,7 @@ function previewShopRegistrationImages(){
   });
  };
  draw(one,storefront&&storefront.files?Array.from(storefront.files).slice(0,1):[]);
- draw(many,products&&products.files?Array.from(products.files).slice(0,10):[]);
+ draw(many,products&&products.files?Array.from(products.files).slice(0,100):[]);
 }
 function validateShopImage(file){
  if(!file)return;
@@ -774,7 +775,7 @@ async function registerShop(event){
  const productFiles=Array.from(document.getElementById('merchantProductImages').files||[]);
  const box=document.getElementById('merchantStatus');
  if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
- if(productFiles.length>10){box.textContent='يمكنك اختيار 10 صور للمنتجات كحد أقصى.';return;}
+ if(productFiles.length>100){box.textContent='يمكنك اختيار 100 صورة للمنتجات كحد أقصى.';return;}
  try{
   validateShopImage(storefrontFile);
   productFiles.forEach(validateShopImage);
