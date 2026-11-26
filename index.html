@@ -758,7 +758,7 @@ async function confirmCustomerOrder(){
  }
 }
 function showMyOrders(){const box=document.getElementById('myOrders');if(!box)return;const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');box.innerHTML=rows.length?rows.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب')+'</b><br>المحل: '+escapeText(x.shopName||x.shop_name||'—')+'<br>الإجمالي: '+Number(x.total||0).toFixed(2)+' جنيه<br>الحالة: '+escapeText(x.order_status||x.status||'جديد')+'</div>').join(''):'لا توجد طلبات محفوظة على هذا الهاتف.';}
-async function renderOrders(){
+async function renderOrdersLegacy(){
  await requireAdminSession();
  const box=document.getElementById('adminData');box.textContent='جارٍ تحميل الطلبات...';
  sbRequest('orders?select=id,customer_name,customer_phone,delivery_address,order_details,status,created_at&order=created_at.desc').then(rows=>{
