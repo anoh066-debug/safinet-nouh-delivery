@@ -154,7 +154,7 @@ function installSafinetApp(){
  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
  if(isStandalone){alert('تطبيق سفينة نوح دليفري مثبت بالفعل على هاتفك.');return;}
  if(safinetInstallPrompt){safinetInstallPrompt.prompt();safinetInstallPrompt.userChoice.then(choice=>{if(choice.outcome==='accepted'){const b=document.getElementById('installAppButton');if(b)b.textContent='جارٍ تثبيت التطبيق...';}safinetInstallPrompt=null;}).catch(()=>{});return;}
- if(isIOS){alert('لتثبيت سفينة نوح دليفري على الآيفون:\\n1- افتح الرابط من متصفح Safari.\\n2- اضغط زر المشاركة أسفل الشاشة.\\n3- اختر «إضافة إلى الشاشة الرئيسية».\\n4- اضغط «إضافة».');return;}
+ if(isIOS){alert('لتثبيت سفينة نوح دليفري على الآيفون:\n1- افتح الرابط من متصفح Safari.\n2- اضغط زر المشاركة أسفل الشاشة.\n3- اختر «إضافة إلى الشاشة الرئيسية».\n4- اضغط «إضافة».');return;}
  alert('لتثبيت التطبيق: افتح الرابط من Chrome، ثم اضغط قائمة ⋮ واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».');
 }
 if ("serviceWorker" in navigator) {
