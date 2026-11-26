@@ -337,7 +337,31 @@ if ("serviceWorker" in navigator) {
 <script>
 function openAdminPage(id,loader){const home=document.getElementById('adminHome');if(home)home.style.display='none';document.querySelectorAll('#adminWorkspace .admin-subpage').forEach(p=>p.style.display='none');const page=document.getElementById(id);if(page)page.style.display='block';window.scrollTo(0,0);if(typeof loader==='function')loader();}
 function backToAdminHome(){document.querySelectorAll('#adminWorkspace .admin-subpage').forEach(p=>p.style.display='none');const home=document.getElementById('adminHome');if(home)home.style.display='block';window.scrollTo(0,0);}
-function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='customer'){loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}if(id==='admin')showAdminAccess();window.scrollTo(0,0)}
+function renderSafinetScreen(id){
+ const target=document.getElementById(id);
+ if(!target||!target.classList.contains('screen'))return;
+ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+ target.classList.add('active');
+ if(id==='customer'){loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
+ if(id==='admin')showAdminAccess();
+ window.scrollTo(0,0);
+}
+function go(id){
+ const target=document.getElementById(id);
+ if(!target||!target.classList.contains('screen'))return;
+ const current=document.querySelector('.screen.active');
+ if(current&&current.id===id)return;
+ try{history.pushState({safinetScreen:id},'',location.pathname+location.search+'#'+id);}catch(e){}
+ renderSafinetScreen(id);
+}
+try{
+ const activeScreen=document.querySelector('.screen.active');
+ history.replaceState({safinetScreen:activeScreen?activeScreen.id:'home'},'',location.href);
+}catch(e){}
+window.addEventListener('popstate',event=>{
+ const previous=event.state&&event.state.safinetScreen;
+ renderSafinetScreen(previous||'home');
+});
 let sbClient=null,adminSession=null,adminRecoveryMode=false;
 function initSupabaseAuth(){
  const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
