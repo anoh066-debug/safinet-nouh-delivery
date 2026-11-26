@@ -123,7 +123,7 @@ async function submitDeliveryOrder(event){
  playSafinetNotice();
  showMyOrders();
 }
-async function shareApp(){
+function shareOrInstallApp(){\n const wantsShare=window.confirm('اضغط «موافق» لمشاركة رابط التطبيق، أو «إلغاء» لاختيار تثبيت التطبيق.');\n if(wantsShare){shareApp();}else{installSafinetApp();}\n}\nasync function shareApp(){
  const shareData={title:'سفينة نوح دليفري',text:'جرّب تطبيق سفينة نوح دليفري لطلب التوصيل من المحلات داخل مدينة السادات.',url:'https://misty-band-02bb.anoh066.workers.dev'};
  try{
   if(navigator.share){await navigator.share(shareData);return;}
@@ -176,9 +176,8 @@ if ("serviceWorker" in navigator) {
 <button class="poster-hit poster-customer" type="button" aria-label="دخول العميل" onclick="go('customer')"></button>
 <button class="poster-admin" type="button" aria-label="إدارة التطبيق" onclick="go('admin')"></button>
 <button class="poster-phone" type="button" aria-label="اتصل بإدارة التطبيق" onclick="window.location.href='tel:01094881059'"></button>
-<button class="poster-share" type="button" aria-label="مشاركة التطبيق" onclick="shareApp()">↗</button>
+<button class="poster-share" id="installAppButton" type="button" aria-label="مشاركة وتثبيت التطبيق" onclick="shareOrInstallApp()">مشاركة<br>وتثبيت</button>
 </div>
-<button class="install-app-button" id="installAppButton" type="button" onclick="installSafinetApp()">تثبيت تطبيق سفينة نوح دليفري</button>
 </section>
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
