@@ -574,7 +574,7 @@ async function renderRegisteredShops(){
  box.textContent='جارٍ تحميل المحلات المسجلة...';
  try{
   await requireAdminSession();
-  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&order=shop_name.asc');
+  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&is_active=eq.true&is_registered=eq.true&order=shop_name.asc');
   adminShopRecords=shops||[];
   box.innerHTML='<label for="adminShopSearch">ابحث باسم المحل أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList" style="margin-top:10px"></div>';
   filterAdminShops('');
