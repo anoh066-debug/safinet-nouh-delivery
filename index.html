@@ -529,6 +529,35 @@ if ("serviceWorker" in navigator) {
 </section>
 </main>
 <script>
+/* معالج مستقل لأزرار شاشة البداية، يعمل حتى لو تعطل كود التطبيق الرئيسي */
+(function(){
+ const routes={ 'poster-merchant':'merchant','poster-driver':'driver','poster-customer':'customer','poster-admin':'admin' };
+ document.addEventListener('click',function(event){
+  const button=event.target.closest('#home button');
+  if(!button)return;
+  let destination='';
+  for(const cls in routes){if(button.classList.contains(cls)){destination=routes[cls];break;}}
+  if(!destination)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const target=document.getElementById(destination);
+  if(!target||!target.classList.contains('screen'))return;
+  try{history.pushState({safinetScreen:destination},'',location.pathname+location.search+'#'+destination);}catch(e){}
+  document.querySelectorAll('.screen').forEach(function(screen){screen.classList.remove('active');});
+  target.classList.add('active');
+  window.scrollTo(0,0);
+  if(destination==='customer'&&typeof ensureCustomerIdentity==='function'){
+   ensureCustomerIdentity(); if(typeof loadCustomerCatalog==='function')loadCustomerCatalog();
+   if(typeof renderCustomerCart==='function')renderCustomerCart();
+   if(typeof loadDeliveryPricing==='function')loadDeliveryPricing().catch(function(){});
+   if(typeof initDeliveryMap==='function')setTimeout(function(){initDeliveryMap();},250);
+  }
+  if(destination==='merchant'&&typeof initMerchantMap==='function')setTimeout(initMerchantMap,180);
+  if(destination==='admin'&&typeof showAdminAccess==='function')showAdminAccess();
+ },true);
+})();
+</script>
+<script>
 
 let riderTrackingTimer=null,riderTrackingActive=false,riderTrackingBusy=false;
 let adminTrackingMap=null,adminTrackingMarkers={},adminTrackingTimer=null;
