@@ -233,9 +233,9 @@ if ("serviceWorker" in navigator) {
 <input id="merchantStorefrontImage" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewShopRegistrationImages()">
 <div class="shop-image-help">اختار صورة واضحة لواجهة المحل. الحد الأقصى 5 ميجابايت للصورة.</div>
 <div id="merchantStorefrontPreview" class="shop-image-preview" aria-live="polite"></div>
-<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 5 صور)</label>
+<label for="merchantProductImages">صور المنتجات داخل المحل (حتى 10 صور)</label>
 <input id="merchantProductImages" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewShopRegistrationImages()">
-<div class="shop-image-help">تقدر تختار صورة واحدة أو أكثر للمنتجات، بحد أقصى 5 صور، وكل صورة حتى 5 ميجابايت.</div>
+<div class="shop-image-help">تقدر تختار صورة واحدة أو أكثر للمنتجات، بحد أقصى 10 صور، وكل صورة حتى 5 ميجابايت.</div>
 <div id="merchantProductsPreview" class="shop-image-preview" aria-live="polite"></div>
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
@@ -563,7 +563,7 @@ function previewShopRegistrationImages(){
   });
  };
  draw(one,storefront&&storefront.files?Array.from(storefront.files).slice(0,1):[]);
- draw(many,products&&products.files?Array.from(products.files).slice(0,5):[]);
+ draw(many,products&&products.files?Array.from(products.files).slice(0,10):[]);
 }
 function validateShopImage(file){
  if(!file)return;
@@ -589,7 +589,7 @@ async function registerShop(event){
  const productFiles=Array.from(document.getElementById('merchantProductImages').files||[]);
  const box=document.getElementById('merchantStatus');
  if(!name||!/^01[0-9]{9}$/.test(phone)||!activity||!address||!storefrontFile){box.textContent='أكمل بيانات المحل واختر صورة واضحة لواجهة المحل.';return;}
- if(productFiles.length>5){box.textContent='يمكنك اختيار 5 صور للمنتجات كحد أقصى.';return;}
+ if(productFiles.length>10){box.textContent='يمكنك اختيار 10 صور للمنتجات كحد أقصى.';return;}
  try{
   validateShopImage(storefrontFile);
   productFiles.forEach(validateShopImage);
