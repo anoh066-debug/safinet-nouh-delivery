@@ -994,10 +994,11 @@ async function renderRiderLedger(){
  panel.style.display='block';box.textContent='جارٍ تحميل بيانات المندوبين والطلبات...';
  try{
   await requireAdminSession();
-  const [riders,orders,payouts]=await Promise.all([
+  const [riders,orders,payouts,commissionPayments]=await Promise.all([
    sbRequest('riders?select=id,rider_code,full_name,phone,vehicle_type,vehicle_details,plate_number,approval_status,is_available,created_at&order=created_at.desc'),
    sbRequest('orders?select=id,customer_name,customer_phone,shop_name,delivery_address,status,total_amount,delivery_fee,rider_id,rider_code,assigned_at,delivered_at,created_at&order=created_at.desc'),
-   sbRequest('rider_payouts?select=id,rider_id,amount,payment_method,reference,notes,paid_at&order=paid_at.desc')
+   sbRequest('rider_payouts?select=id,rider_id,amount,payment_method,reference,notes,paid_at&order=paid_at.desc'),
+   sbRequest('platform_commission_payments?select=id,rider_id,amount,payment_method,reference,notes,received_at&order=received_at.desc')
   ]);
   const money=v=>(Number(v)||0).toFixed(2)+' جنيه';
   const done=s=>['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed'].includes(String(s||'').trim().toLowerCase());
@@ -1006,14 +1007,21 @@ async function renderRiderLedger(){
   const delivered=assigned.filter(o=>done(o.status));
   const cancelledOrders=assigned.filter(o=>cancelled(o.status));
   const sum=(arr,key)=>arr.reduce((a,x)=>a+(Number(x[key])||0),0);
+  const totalAdminDue=delivered.reduce((a,o)=>a+(Number(o.delivery_fee)||0)*0.10,0);
+  const totalAdminReceived=sum(commissionPayments,'amount');
+  const totalAdminRemaining=Math.max(0,totalAdminDue-totalAdminReceived);
   let html='<div class="record"><b>إجمالي المندوبين:</b> '+riders.length+' — <b>الطلبات المسندة:</b> '+assigned.length+' — <b>تم التسليم:</b> '+delivered.length+' — <b>ملغاة:</b> '+cancelledOrders.length+'</div>';
+  html+='<div class="record"><h3>أرباح التطبيق وتحصيل العمولة</h3><b>إجمالي عمولة الإدارة (10%):</b> '+money(totalAdminDue)+'<br><b>المبالغ المستلمة فعليًا على فودافون كاش:</b> '+money(totalAdminReceived)+'<br><b>المتبقي للتحصيل من المندوبين:</b> '+money(totalAdminRemaining)+'<p class="small">يُسجل التحويل بعد التأكد من وصوله إلى محفظة فودافون كاش رقم 01094881059.</p></div>';
   html+='<h3>كشف حساب وجرد كل مندوب</h3>';
   html+=riders.map(r=>{
    const ro=orders.filter(o=>o.rider_id===r.id),completed=ro.filter(o=>done(o.status)),cancelledRows=ro.filter(o=>cancelled(o.status));
    const fees=sum(completed,'delivery_fee'),earned=sum(completed,'rider_share'),paid=sum(payouts.filter(p=>p.rider_id===r.id),'amount');
    const share=completed.reduce((a,o)=>a+Math.round((Number(o.delivery_fee)||0)*90)/100,0);
    const remaining=Math.max(0,share-paid);
-   return '<div class="record"><h3>'+escapeText(r.full_name||'مندوب')+' — '+escapeText(r.rider_code||'بانتظار الكود')+'</h3><b>الهاتف:</b> '+escapeText(r.phone||'—')+'<br><b>المركبة:</b> '+escapeText(({bicycle:'عجلة',motorcycle:'موتوسيكل',car:'سيارة'})[r.vehicle_type]||r.vehicle_type||'—')+' '+escapeText(r.vehicle_details||'')+'<br><b>اللوحة:</b> '+escapeText(r.plate_number||'—')+'<br><b>حالة الحساب:</b> '+escapeText(r.approval_status||'—')+' — <b>التواجد:</b> '+(r.is_available?'متاح':'غير متاح')+'<hr><b>إجمالي الطلبات:</b> '+ro.length+' — <b>مكتملة:</b> '+completed.length+' — <b>ملغاة:</b> '+cancelledRows.length+'<br><b>إجمالي أجرة التوصيل للطلبات المكتملة:</b> '+money(fees)+'<br><b>مستحق المندوب (90%):</b> '+money(share)+'<br><b>نصيب الإدارة (10%):</b> '+money(fees-share)+'<br><b>المدفوع للمندوب:</b> '+money(paid)+'<br><b>المتبقي للمندوب:</b> '+money(remaining)+'<form class="form" style="padding:8px 0" onsubmit="recordRiderPayout(event,'+JSON.stringify(r.id)+')"><label>تسجيل دفعة للمندوب</label><input name="amount" type="number" min="0.01" step="0.01" max="'+remaining.toFixed(2)+'" placeholder="المبلغ المدفوع" required><input name="method" maxlength="60" placeholder="طريقة الدفع (نقدي / تحويل)"><input name="reference" maxlength="120" placeholder="رقم مرجع التحويل (اختياري)"><input name="notes" maxlength="250" placeholder="ملاحظات (اختياري)"><button class="action" type="submit">حفظ الدفعة</button></form><details><summary>تفاصيل طلبات المندوب</summary>'+(ro.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>المحل: '+escapeText(o.shop_name||'—')+'<br>الحالة: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>حصة المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+'<br>التاريخ: '+escapeText(o.created_at||'—')+'</div>').join('')||'<p>لا توجد طلبات مسندة لهذا المندوب.</p>')+'</details></div>';
+   const adminDue=fees*0.10;
+   const adminReceived=sum(commissionPayments.filter(p=>p.rider_id===r.id),'amount');
+   const adminRemaining=Math.max(0,adminDue-adminReceived);
+   return '<div class="record"><h3>'+escapeText(r.full_name||'مندوب')+' — '+escapeText(r.rider_code||'بانتظار الكود')+'</h3><b>الهاتف:</b> '+escapeText(r.phone||'—')+'<br><b>المركبة:</b> '+escapeText(({bicycle:'عجلة',motorcycle:'موتوسيكل',car:'سيارة'})[r.vehicle_type]||r.vehicle_type||'—')+' '+escapeText(r.vehicle_details||'')+'<br><b>اللوحة:</b> '+escapeText(r.plate_number||'—')+'<br><b>حالة الحساب:</b> '+escapeText(r.approval_status||'—')+' — <b>التواجد:</b> '+(r.is_available?'متاح':'غير متاح')+'<hr><b>إجمالي الطلبات:</b> '+ro.length+' — <b>مكتملة:</b> '+completed.length+' — <b>ملغاة:</b> '+cancelledRows.length+'<br><b>إجمالي أجرة التوصيل للطلبات المكتملة:</b> '+money(fees)+'<br><b>مستحق المندوب (90%):</b> '+money(share)+'<br><b>نصيب الإدارة (10%):</b> '+money(adminDue)+'<br><b>المحول للإدارة على فودافون كاش:</b> '+money(adminReceived)+'<br><b>المتبقي على المندوب للإدارة:</b> '+money(adminRemaining)+'<form class="form" style="padding:8px 0" onsubmit="recordCommissionPayment(event,'+JSON.stringify(r.id)+')"><label>تسجيل تحويل عمولة الإدارة بعد التأكد من الاستلام</label><input name="amount" type="number" min="0.01" step="0.01" max="'+adminRemaining.toFixed(2)+'" placeholder="المبلغ المستلم" required><input name="method" value="Vodafone Cash" readonly><input name="reference" maxlength="120" placeholder="رقم مرجع التحويل (مهم لمنع التكرار)"><input name="notes" maxlength="250" placeholder="ملاحظات (اختياري)"><button class="action" type="submit">تأكيد تسجيل المبلغ المستلم</button></form><form class="form" style="padding:8px 0" onsubmit="recordRiderPayout(event,'+JSON.stringify(r.id)+')"><label>تسجيل دفعة للمندوب</label><input name="amount" type="number" min="0.01" step="0.01" max="'+remaining.toFixed(2)+'" placeholder="المبلغ المدفوع" required><input name="method" maxlength="60" placeholder="طريقة الدفع (نقدي / تحويل)"><input name="reference" maxlength="120" placeholder="رقم مرجع التحويل (اختياري)"><input name="notes" maxlength="250" placeholder="ملاحظات (اختياري)"><button class="action" type="submit">حفظ الدفعة</button></form><details><summary>تفاصيل طلبات المندوب</summary>'+(ro.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>المحل: '+escapeText(o.shop_name||'—')+'<br>الحالة: '+escapeText(o.status||'—')+'<br>أجرة التوصيل: '+money(o.delivery_fee)+'<br>حصة المندوب 90%: '+money(done(o.status)?Number(o.delivery_fee)*.9:0)+'<br>التاريخ: '+escapeText(o.created_at||'—')+'</div>').join('')||'<p>لا توجد طلبات مسندة لهذا المندوب.</p>')+'</details></div>';
   }).join('')||'<p>لا يوجد مندوبون مسجلون حتى الآن.</p>';
   html+='<h3>إسناد طلب إلى مندوب وتحديد أجرة التوصيل</h3>';
   const unassigned=orders.filter(o=>!o.rider_id&&!cancelled(o.status));
@@ -1049,6 +1057,32 @@ async function updateOrderStatus(event,orderId){
   await renderRiderLedger();
  }catch(e){alert('تعذر تحديث حالة الطلب: '+(e.message||'خطأ'));}
 }
+async function recordCommissionPayment(event,riderId){
+ event.preventDefault();
+ try{
+  await requireAdminSession();
+  const form=event.currentTarget,amount=Number(form.elements.amount.value);
+  if(!Number.isFinite(amount)||amount<=0)throw new Error('أدخل مبلغًا صحيحًا.');
+  const [orders,payments]=await Promise.all([
+   sbRequest('orders?select=id,status,delivery_fee&rider_id=eq.'+encodeURIComponent(riderId)),
+   sbRequest('platform_commission_payments?select=amount&rider_id=eq.'+encodeURIComponent(riderId))
+  ]);
+  const completed=orders.filter(o=>['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed'].includes(String(o.status||'').trim().toLowerCase()));
+  const due=completed.reduce((a,o)=>a+(Number(o.delivery_fee)||0)*0.10,0);
+  const received=payments.reduce((a,p)=>a+(Number(p.amount)||0),0);
+  const remaining=Math.max(0,due-received);
+  if(amount>remaining+0.005)throw new Error('المبلغ أكبر من العمولة المتبقية على هذا المندوب.');
+  const reference=form.elements.reference.value.trim()||null;
+  if(reference){
+   const duplicate=await sbRequest('platform_commission_payments?select=id&reference=eq.'+encodeURIComponent(reference));
+   if(duplicate.length)throw new Error('رقم مرجع التحويل مسجل من قبل.');
+  }
+  await sbRequest('platform_commission_payments','POST',{rider_id:riderId,amount,payment_method:'Vodafone Cash',reference,notes:form.elements.notes.value.trim()||null});
+  alert('تم تسجيل المبلغ في حسابات الإدارة. تأكد أنك تحققت من وصول التحويل إلى المحفظة.');
+  await renderRiderLedger();
+ }catch(e){alert('تعذر تسجيل التحويل: '+(e.message||'خطأ في الاتصال'));}
+}
+
 async function recordRiderPayout(event,riderId){
  event.preventDefault();
  try{
