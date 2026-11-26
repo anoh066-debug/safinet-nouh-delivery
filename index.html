@@ -462,28 +462,40 @@ async function renderAdmin(){
   const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,national_id,national_id_front_path,national_id_back_path,vehicle_photo_path,driving_license_front_path,vehicle_license_front_path,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&order=shop_name.asc')]);
   let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
   html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
-  html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل البيانات</button><button class="action secondary" type="button" onclick="deleteShop('+JSON.stringify(x.id)+')">حذف المحل</button></div></div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
+  html+='<h3>المحلات ('+shops.length+')</h3>'+(shops.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" type="button" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">مراجعة / تعديل المحل</button></div></div>').join('')||'<p>لا توجد محلات مسجلة.</p>');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
 async function editShop(id){
  try{
   await requireAdminSession();
-  const rows=await sbRequest('shops?select=id,shop_name,phone,activity_type,address&id=eq.'+encodeURIComponent(id));
+  const rows=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_registered,is_active&id=eq.'+encodeURIComponent(id));
   const shop=rows&&rows[0];if(!shop)throw new Error('لم يتم العثور على المحل.');
+  const choice=prompt('مراجعة المحل: اكتب رقم الاختيار\n1 - تعديل البيانات\n2 - حذف المحل\n3 - إلغاء','1');
+  if(choice===null||choice.trim()==='3')return;
+  if(choice.trim()==='2'){
+   if(!confirm('تأكيد حذف المحل نهائيًا؟ إذا كان مرتبطًا بطلبات سابقة قد ترفض قاعدة البيانات الحذف حفاظًا على السجلات.'))return;
+   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'DELETE');
+   alert('تم حذف المحل.');
+   await renderAdmin();await renderShopApprovals();return;
+  }
+  if(choice.trim()!=='1'){alert('اختيار غير صحيح.');return;}
   const name=prompt('اسم المحل:',shop.shop_name||'');if(name===null)return;
   const phone=prompt('رقم هاتف المحل:',shop.phone||'');if(phone===null)return;
   const activity=prompt('نشاط المحل:',shop.activity_type||'');if(activity===null)return;
   const address=prompt('عنوان المحل:',shop.address||'');if(address===null)return;
   if(!name.trim()){alert('اسم المحل مطلوب.');return;}
   if(phone.trim()&&!/^01[0-9]{9}$/.test(phone.trim())){alert('رقم الهاتف يجب أن يكون 11 رقمًا ويبدأ بـ 01.');return;}
-  await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{shop_name:name.trim(),phone:phone.trim()||null,activity_type:activity.trim()||null,address:address.trim()||null});
-  alert('تم تحديث بيانات المحل بنجاح.');
+  const approve=confirm('هل تريد حفظ البيانات واعتماد المحل ليظهر للعملاء؟\nاضغط موافق للحفظ والاعتماد، أو إلغاء للحفظ فقط.');
+  const update={shop_name:name.trim(),phone:phone.trim()||null,activity_type:activity.trim()||null,address:address.trim()||null};
+  if(approve){update.is_registered=true;update.is_active=true;}
+  await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',update);
+  alert(approve?'تم حفظ البيانات واعتماد المحل بنجاح.':'تم حفظ بيانات المحل فقط.');
   await renderAdmin();await renderShopApprovals();
- }catch(e){alert('تعذر تعديل المحل: '+(e.message||'خطأ في الاتصال'));}
+ }catch(e){alert('تعذر تنفيذ مراجعة المحل: '+(e.message||'خطأ في الاتصال'));}
 }
 async function deleteShop(id){
- if(!confirm('هل أنت متأكد من حذف هذا المحل نهائيًا؟ لا يمكن التراجع عن الحذف.'))return;
+ if(!confirm('هل أنت متأكد من حذف هذا المحل نهائيًا؟ قد تمنع قاعدة البيانات الحذف إذا كان مرتبطًا بطلبات سابقة.'))return;
  try{
   await requireAdminSession();
   await sbRequest('shops?id=eq.'+encodeURIComponent(id),'DELETE');
@@ -491,7 +503,7 @@ async function deleteShop(id){
   await renderAdmin();await renderShopApprovals();
  }catch(e){alert('تعذر حذف المحل. قد يكون مرتبطًا بسجلات أخرى في قاعدة البيانات. التفاصيل: '+(e.message||'خطأ في الاتصال'));}
 }
-async function approveShop(id){await requireAdminSession();if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');await renderShopApprovals();}catch(e){alert('تعذر اعتماد المحل: '+e.message+' — قد تحتاج صلاحية تحديث جدول shops في Supabase.')}}
+async function approveShop(id){if(!confirm('اعتماد هذا المحل وإظهاره للعملاء؟'))return;try{await requireAdminSession();await sbRequest('shops?id=eq.'+encodeURIComponent(id),'PATCH',{is_active:true,is_registered:true});playSafinetNotice();alert('تم اعتماد المحل.');await renderAdmin();await renderShopApprovals();}catch(e){alert('تعذر اعتماد المحل: '+(e.message||'خطأ في الاتصال')+' — راجع صلاحيات تحديث جدول shops في Supabase.')}}
 
 async function renderShopVisits(){
  const panel=document.getElementById('shopVisitPanel'),list=document.getElementById('shopVisitList');
@@ -519,7 +531,7 @@ async function renderShopApprovals(){
     const url=sbClient.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
     return '<a href="'+escapeText(url)+'" target="_blank" rel="noopener"><img src="'+escapeText(url)+'" alt="'+(i===0?'واجهة المحل':'صورة منتج')+'"></a>';
    }).join('')+'</div>':'<p class="small">لم تُرفق صور بهذا الطلب.</p>';
-   return '<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+images+'<small>الحالة: طلب تسجيل — بانتظار موافقة الإدارة</small><div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="action" type="button" onclick="approveShop('+JSON.stringify(s.id)+')">اعتماد المحل</button><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(s.id)+')">تعديل البيانات</button><button class="action secondary" type="button" onclick="deleteShop('+JSON.stringify(s.id)+')">حذف المحل</button><button class="action secondary" type="button" onclick="rejectShopRegistration('+JSON.stringify(s.id)+')">رفض الطلب</button></div></div>';
+   return '<div class="record"><b>'+escapeText(s.shop_name||'محل بدون اسم')+'</b><br>النشاط: '+escapeText(s.activity_type||'—')+'<br>العنوان: '+escapeText(s.address||'—')+'<br>الهاتف: '+escapeText(s.phone||'—')+images+'<small>الحالة: طلب تسجيل — بانتظار موافقة الإدارة</small><div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="action" type="button" onclick="approveShop('+JSON.stringify(s.id)+')">اعتماد المحل</button><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(s.id)+')">مراجعة / تعديل المحل</button><button class="action secondary" type="button" onclick="rejectShopRegistration('+JSON.stringify(s.id)+')">رفض الطلب</button></div></div>';
   }).join(''):'<p>لا توجد طلبات تسجيل محلات معلقة حاليًا.</p>';
  }catch(e){list.textContent='تعذر تحميل طلبات المحلات: '+(e.message||'خطأ في الاتصال');}
 }
