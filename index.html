@@ -53,6 +53,14 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
 #shareInstallMenu .share-choice{background:#0756ad;color:#fff}
 #shareInstallMenu .install-choice{background:#ff7900;color:#fff}
 #shareInstallMenu .cancel-choice{background:#e9eef6;color:#17345d}
+#installHelpModal{position:fixed;inset:0;z-index:100001;display:none;align-items:center;justify-content:center;padding:18px;background:#061b3dcc}
+#installHelpModal .install-help-panel{width:min(100%,390px);max-height:85vh;overflow:auto;padding:20px;border-radius:18px;background:#fff;box-shadow:0 12px 40px #0005;text-align:right;color:#17345d}
+#installHelpModal h3{margin:0 0 10px;color:#073b91;text-align:center}
+#installHelpModal ol{padding-right:22px;line-height:1.9}
+#installHelpModal .install-help-actions{display:grid;gap:9px;margin-top:14px}
+#installHelpModal button{width:100%;min-height:46px;border:0;border-radius:12px;padding:11px;font-size:16px;font-weight:bold;cursor:pointer}
+#installHelpModal .copy-install-link{background:#0756ad;color:#fff}
+#installHelpModal .close-install-help{background:#e9eef6;color:#17345d}
 .home-footer{text-align:center;padding:12px 10px 18px;background:#fff;color:#17345d;line-height:1.8;font-size:15px}
 .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
 
@@ -170,14 +178,53 @@ function showMyOrders(){
 let safinetInstallPrompt=null;
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();safinetInstallPrompt=event;});
 window.addEventListener('appinstalled',()=>{safinetInstallPrompt=null;const b=document.getElementById('installAppButton');if(b)b.textContent='تم تثبيت التطبيق على هاتفك';});
-function installSafinetApp(){
+function showInstallHelp(){
  const ua=navigator.userAgent||'';
  const isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const isSamsung=/SamsungBrowser/i.test(ua);
+ const isEdge=/EdgA?\//i.test(ua);
+ const isFirefox=/Firefox\//i.test(ua);
+ let heading='طريقة تثبيت التطبيق على هاتفك';
+ let steps=[];
+ if(isIOS){
+  steps=['افتح الرابط من متصفح Safari.','اضغط زر المشاركة أسفل الشاشة.','اختر «إضافة إلى الشاشة الرئيسية».','اضغط «إضافة».'];
+ }else if(isSamsung){
+  steps=['اضغط قائمة المتصفح (☰ أو ⋮).','اختر «إضافة صفحة إلى» ثم «الشاشة الرئيسية» أو «تثبيت التطبيق» إذا ظهر.','اضغط «إضافة» للتأكيد.'];
+ }else if(isEdge){
+  steps=['افتح قائمة المتصفح (⋯).','اختر «إضافة إلى الهاتف» أو «تثبيت التطبيق» إذا ظهر.','اتبع رسالة التأكيد.'];
+ }else if(isFirefox){
+  steps=['افتح قائمة المتصفح (⋮).','اختر «إضافة إلى الشاشة الرئيسية» إذا ظهر.','اضغط «إضافة». إذا لم يظهر الخيار، افتح الرابط في Chrome.'];
+ }else{
+  steps=['افتح الرابط في متصفح Chrome الأصلي، وليس من داخل فيسبوك أو واتساب.','اضغط قائمة Chrome (⋮) أعلى الشاشة.','اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية» إذا ظهر.','اضغط «إضافة» أو «تثبيت» للتأكيد.'];
+ }
+ const modal=document.getElementById('installHelpModal');
+ const title=document.getElementById('installHelpTitle');
+ const list=document.getElementById('installHelpSteps');
+ if(!modal||!title||!list){alert(steps.join('\\n'));return;}
+ title.textContent=heading;
+ list.innerHTML=steps.map(step=>'<li>'+escapeText(step)+'</li>').join('');
+ modal.style.display='flex';modal.setAttribute('aria-hidden','false');
+}
+function closeInstallHelp(){
+ const modal=document.getElementById('installHelpModal');
+ if(modal){modal.style.display='none';modal.setAttribute('aria-hidden','true');}
+}
+async function copyInstallLink(){
+ const url='https://misty-band-02bb.anoh066.workers.dev/';
+ try{
+  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);alert('تم نسخ رابط التطبيق. افتحه في Chrome ثم جرّب التثبيت.');}
+  else{const field=document.createElement('textarea');field.value=url;field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();const ok=document.execCommand('copy');field.remove();alert(ok?'تم نسخ رابط التطبيق.':'انسخ الرابط يدويًا: '+url);}
+ }catch(e){alert('انسخ رابط التطبيق يدويًا: '+url);}
+}
+function installSafinetApp(){
  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
  if(isStandalone){alert('تطبيق سفينة نوح دليفري مثبت بالفعل على هاتفك.');return;}
- if(safinetInstallPrompt){safinetInstallPrompt.prompt();safinetInstallPrompt.userChoice.then(choice=>{if(choice.outcome==='accepted'){const b=document.getElementById('installAppButton');if(b)b.textContent='جارٍ تثبيت التطبيق...';}safinetInstallPrompt=null;}).catch(()=>{});return;}
- if(isIOS){alert('لتثبيت سفينة نوح دليفري على الآيفون:\n1- افتح الرابط من متصفح Safari.\n2- اضغط زر المشاركة أسفل الشاشة.\n3- اختر «إضافة إلى الشاشة الرئيسية».\n4- اضغط «إضافة».');return;}
- alert('لتثبيت التطبيق: افتح الرابط من Chrome، ثم اضغط قائمة ⋮ واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».');
+ if(safinetInstallPrompt){
+  safinetInstallPrompt.prompt();
+  safinetInstallPrompt.userChoice.then(choice=>{if(choice.outcome==='accepted'){const b=document.getElementById('installAppButton');if(b)b.textContent='جارٍ تثبيت التطبيق...';}safinetInstallPrompt=null;}).catch(()=>{safinetInstallPrompt=null;showInstallHelp();});
+  return;
+ }
+ showInstallHelp();
 }
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -208,6 +255,17 @@ if ("serviceWorker" in navigator) {
    <button class="share-choice" type="button" onclick="chooseShareInstall('share')">مشاركة</button>
    <button class="install-choice" type="button" onclick="chooseShareInstall('install')">تثبيت</button>
    <button class="cancel-choice" type="button" onclick="chooseShareInstall('cancel')">إلغاء</button>
+  </div>
+ </div>
+</div>
+<div id="installHelpModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="طريقة تثبيت التطبيق" onclick="if(event.target===this)closeInstallHelp()">
+ <div class="install-help-panel">
+  <h3 id="installHelpTitle">طريقة تثبيت التطبيق على هاتفك</h3>
+  <p>اتبع الخطوات المناسبة لنوع متصفحك:</p>
+  <ol id="installHelpSteps"></ol>
+  <div class="install-help-actions">
+   <button class="copy-install-link" type="button" onclick="copyInstallLink()">نسخ رابط التطبيق</button>
+   <button class="close-install-help" type="button" onclick="closeInstallHelp()">إغلاق</button>
   </div>
  </div>
 </div>
