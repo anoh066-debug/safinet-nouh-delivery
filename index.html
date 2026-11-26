@@ -253,9 +253,9 @@ if ("serviceWorker" in navigator) {
 <label>صورة البطاقة الشخصية — الوجه</label><input id="riderIdFront" type="file" accept="image/jpeg,image/png" required>
 <label>صورة البطاقة الشخصية — الظهر</label><input id="riderIdBack" type="file" accept="image/jpeg,image/png" required>
 <label for="riderVehicle">وسيلة التوصيل</label><select id="riderVehicle" required onchange="toggleRiderVehicleFields()"><option value="">اختر وسيلة التوصيل</option><option value="bicycle">عجلة</option><option value="motorcycle">موتوسيكل</option><option value="car">سيارة</option></select>
-<div id="vehicleDetailsFields">
-<label id="riderVehicleDetailsLabel" for="riderVehicleDetails">نوع العجلة وموديلها</label><input id="riderVehicleDetails" required minlength="2" maxlength="120" placeholder="مثال: عجلة جبلي 26 بوصة">
-<small class="small">اكتب النوع والموديل بوضوح.</small>
+<div id="vehicleDetailsFields" style="display:none">
+<label id="riderVehicleDetailsLabel" for="riderVehicleDetails">نوع المركبة وموديلها</label><input id="riderVehicleDetails" minlength="2" maxlength="120" placeholder="مثال: هوجن 150 أو هيونداي فيرنا 2015">
+<small class="small">تُطلب هذه البيانات للموتوسيكل أو السيارة فقط.</small>
 </div>
 <div id="licensedVehicleFields" style="display:none">
 <label for="riderPlate">رقم لوحة المركبة</label><input id="riderPlate" maxlength="30" placeholder="اكتب رقم اللوحة كما هو">
@@ -499,7 +499,7 @@ function getSB(){return {url:(localStorage.getItem('safinet_sb_url')||'https://e
 function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);sbClient=null;adminClient=null;adminSession=null;initSupabaseAuth();document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
 async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');let token=null;const activeScreen=document.querySelector('.screen.active');if(activeScreen&&activeScreen.id==='admin'&&adminSession&&adminSession.access_token)token=adminSession.access_token;if(!token&&sbClient){const z=await sbClient.auth.getSession();token=z.data&&z.data.session?z.data.session.access_token:null;}if(!token&&adminSession&&adminSession.access_token)token=adminSession.access_token;const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+(token||c.key),'Content-Type':'application/json','Prefer':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
 async function testSupabase(){const box=document.getElementById('connectionStatus'),c=getSB();box.textContent='جارٍ اختبار اتصال خدمة تسجيل الدخول...';if(!c.url||!c.key){box.textContent='أدخل رابط المشروع والمفتاح العام أولاً.';return}try{const r=await fetch(c.url+'/auth/v1/settings',{headers:{apikey:c.key}});if(!r.ok)throw new Error('رمز الاستجابة '+r.status);box.textContent='اتصال Supabase Auth ناجح. صلاحية عرض بيانات الإدارة تُختبر بعد تسجيل الدخول.'}catch(e){box.textContent='فشل الاتصال: '+(e.message||'تعذر الوصول إلى Supabase Auth')}}
-function toggleRiderVehicleFields(){const v=document.getElementById('riderVehicle').value,licensed=v==='motorcycle'||v==='car';document.getElementById('licensedVehicleFields').style.display=licensed?'block':'none';document.getElementById('riderVehicleDetailsLabel').textContent=v==='car'?'ماركة السيارة وموديلها':v==='motorcycle'?'نوع الموتوسيكل وموديله':'نوع العجلة وموديلها';document.getElementById('riderVehicleDetails').placeholder=v==='car'?'مثال: هيونداي فيرنا 2015':v==='motorcycle'?'مثال: هوجن 150':'مثال: عجلة جبلي 26 بوصة';document.getElementById('riderPlate').required=licensed;document.getElementById('riderDrivingLicense').required=licensed;document.getElementById('riderVehicleLicense').required=licensed;}
+function toggleRiderVehicleFields(){const v=document.getElementById('riderVehicle').value,licensed=v==='motorcycle'||v==='car';document.getElementById('licensedVehicleFields').style.display=licensed?'block':'none';document.getElementById('vehicleDetailsFields').style.display=licensed?'block':'none';document.getElementById('riderVehicleDetailsLabel').textContent=v==='car'?'ماركة السيارة وموديلها':'نوع الموتوسيكل وموديله';document.getElementById('riderVehicleDetails').placeholder=v==='car'?'مثال: هيونداي فيرنا 2015':'مثال: هوجن 150';document.getElementById('riderVehicleDetails').required=licensed;document.getElementById('riderPlate').required=licensed;document.getElementById('riderDrivingLicense').required=licensed;document.getElementById('riderVehicleLicense').required=licensed;}
 async function uploadRiderDocument(uid,registrationId,key,file){
  if(!file) return null;
  if(!['image/jpeg','image/png'].includes(file.type)) throw new Error('يُسمح بصور JPG أو PNG فقط.');
@@ -523,7 +523,7 @@ async function registerUser(event,type){
  const idFront=file('riderIdFront'),idBack=file('riderIdBack'),vehiclePhoto=file('riderVehiclePhoto');
  const drivingLicense=file('riderDrivingLicense'),vehicleLicense=file('riderVehicleLicense');
  const licensed=vehicle==='motorcycle'||vehicle==='car';
- if(fullName.split(/\s+/).filter(Boolean).length<4||!/^01[0-9]{9}$/.test(phone)||!/^\d{14}$/.test(nationalId)||!vehicle||address.length<3||details.length<2||!idFront||!idBack||!vehiclePhoto||(licensed&&(!plate||!drivingLicense||!vehicleLicense))){
+ if(fullName.split(/\s+/).filter(Boolean).length<4||!/^01[0-9]{9}$/.test(phone)||!/^\d{14}$/.test(nationalId)||!vehicle||address.length<3||(licensed&&details.length<2)||!idFront||!idBack||!vehiclePhoto||(licensed&&(!plate||!drivingLicense||!vehicleLicense))){
   box.textContent='استكمل الاسم الرباعي والرقم القومي وصور البطاقة والمركبة، وبيانات الرخصة واللوحة للموتوسيكل أو السيارة.';return;
  }
  if(!initSupabaseAuth()){box.textContent='تعذر الاتصال بخدمة التسجيل الآمن. حاول مرة أخرى.';return;}
@@ -548,7 +548,7 @@ async function registerUser(event,type){
   ]);
   const {error}=await sbClient.rpc('register_rider_secure',{
    p_full_name:fullName,p_phone:phone,p_address:address,p_vehicle_type:vehicle,
-   p_vehicle_details:details,p_plate_number:licensed?plate:null,p_national_id:nationalId,
+   p_vehicle_details:licensed?details:null,p_plate_number:licensed?plate:null,p_national_id:nationalId,
    p_national_id_front_path:idFrontPath,p_national_id_back_path:idBackPath,
    p_vehicle_photo_path:vehiclePhotoPath,p_driving_license_front_path:drivingLicensePath,
    p_vehicle_license_front_path:vehicleLicensePath
