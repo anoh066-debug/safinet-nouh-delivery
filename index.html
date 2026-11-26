@@ -197,7 +197,6 @@ if ("serviceWorker" in navigator) {
 <button class="poster-hit poster-customer" type="button" aria-label="دخول العميل" onclick="go('customer')"></button>
 <button class="poster-admin" type="button" aria-label="إدارة التطبيق" onclick="go('admin')"></button>
 <button class="poster-phone" type="button" aria-label="اتصل بإدارة التطبيق" onclick="window.location.href='tel:01094881059'"></button>
-
 </div>
 <div class="home-actions"><button class="action" id="installAppButton" type="button" onclick="shareOrInstallApp()">مشاركة التطبيق وتثبيته</button></div>
 </section>
@@ -214,7 +213,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -339,12 +338,34 @@ if ("serviceWorker" in navigator) {
 <script>
 function openAdminPage(id,loader){const home=document.getElementById('adminHome');if(home)home.style.display='none';document.querySelectorAll('#adminWorkspace .admin-subpage').forEach(p=>p.style.display='none');const page=document.getElementById(id);if(page)page.style.display='block';window.scrollTo(0,0);if(typeof loader==='function')loader();}
 function backToAdminHome(){document.querySelectorAll('#adminWorkspace .admin-subpage').forEach(p=>p.style.display='none');const home=document.getElementById('adminHome');if(home)home.style.display='block';window.scrollTo(0,0);}
+async function ensureCustomerIdentity(){
+ const status=document.getElementById('customerIdentityStatus');
+ const show=message=>{if(status)status.textContent=message;};
+ try{
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بخدمة تسجيل العميل.');
+  let {data:{session},error}=await sbClient.auth.getSession();
+  if(error)throw error;
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')throw new Error('افتح واجهة العميل من نافذة منفصلة عن جلسة الإدارة.');
+  if(!session){
+   show('جارٍ تجهيز حساب العميل تلقائيًا...');
+   const result=await sbClient.auth.signInAnonymously();
+   if(result.error)throw result.error;
+   session=result.data.session;
+  }
+  if(!session||!session.user)throw new Error('لم يتم إنشاء هوية العميل.');
+  show('تم تجهيز حساب العميل تلقائيًا على هذا الجهاز.');
+  return true;
+ }catch(e){
+  show('تعذر تجهيز حساب العميل تلقائيًا: '+(e.message||'تحقق من الاتصال ثم أعد فتح صفحة العميل.'));
+  return false;
+ }
+}
 function renderSafinetScreen(id){
  const target=document.getElementById(id);
  if(!target||!target.classList.contains('screen'))return;
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  target.classList.add('active');
- if(id==='customer'){loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
+ if(id==='customer'){ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
  if(id==='admin')showAdminAccess();
  window.scrollTo(0,0);
 }
@@ -397,8 +418,7 @@ function toggleRiderVehicleFields(){const v=document.getElementById('riderVehicl
 async function uploadRiderDocument(uid,registrationId,key,file){
  if(!file) return null;
  if(!['image/jpeg','image/png'].includes(file.type)) throw new Error('يُسمح بصور JPG أو PNG فقط.');
- if(file.size>10*1024*1024) throw new Error('حجم كل صورة يجب ألا يتجاوز 10 ميجابايت.');
- const ext=file.type==='image/png'?'png':'jpg';
+ if(file.size>10*1024*1024) throw new Error('حجم كل صورة يجب ألا يتجاوز 10 ميجابايت.'); const ext=file.type==='image/png'?'png':'jpg';
  const path=uid+'/'+registrationId+'/'+key+'.'+ext;
  const {error}=await sbClient.storage.from('rider-private-documents').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
  if(error) throw error;
@@ -597,8 +617,7 @@ async function geocodeShopVisitAddress(address,cache){
 }
 async function sortShopVisitsByNearest(){
  const button=document.querySelector('#adminShopVisits button[onclick="sortShopVisitsByNearest()"]');
- const status=document.getElementById('shopVisitSortStatus'),list=document.getElementById('shopVisitList');
- const say=t=>{if(status)status.textContent=t;};
+ const status=document.getElementById('shopVisitSortStatus'),list=document.getElementById('shopVisitList'); const say=t=>{if(status)status.textContent=t;};
  if(button)button.disabled=true;
  if(list)list.textContent='جارٍ تحديد موقعك وتحضير ترتيب الزيارات...';
  say('جارٍ تحديد موقعك الحالي...');
@@ -797,8 +816,7 @@ async function registerShop(event){
  event.preventDefault();
  const form=event.currentTarget;
  const name=document.getElementById('merchantName').value.trim();
- const phone=document.getElementById('merchantPhone').value.trim();
- const activity=document.getElementById('merchantType').value;
+ const phone=document.getElementById('merchantPhone').value.trim(); const activity=document.getElementById('merchantType').value;
  const address=document.getElementById('merchantAddress').value.trim();
  const storefrontFile=document.getElementById('merchantStorefrontImage').files[0]||null;
  const productFiles=Array.from(document.getElementById('merchantProductImages').files||[]);
@@ -997,8 +1015,7 @@ function renderCustomerCatalog(){
  const counts={};CUSTOMER_CATEGORIES.forEach(c=>counts[c.key]=0);
  customerCatalog.forEach(shop=>{const key=getCustomerCategory(shop.activity_type);counts[key]=(counts[key]||0)+1;});
  const selected=CUSTOMER_CATEGORIES.find(c=>c.key===selectedCustomerCategory);
- const visible=selectedCustomerCategory==='all'?customerCatalog:customerCatalog.filter(shop=>getCustomerCategory(shop.activity_type)===selectedCustomerCategory);
- if(customerSortMode==='nearest')visible.sort((a,b)=>{const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;return da-db;});
+ const visible=selectedCustomerCategory==='all'?customerCatalog:customerCatalog.filter(shop=>getCustomerCategory(shop.activity_type)===selectedCustomerCategory); if(customerSortMode==='nearest')visible.sort((a,b)=>{const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;return da-db;});
  else if(customerSortMode==='newest')visible.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  const categoryButtons='<button type="button" class="category-tile '+(selectedCustomerCategory==='all'?'active':'')+'" onclick="selectCustomerCategory(\'all\')"><span style="font-size:25px">🧺</span><strong>كل المحلات</strong><small>'+customerCatalog.length+' محل</small></button>'+CUSTOMER_CATEGORIES.map(c=>'<button type="button" class="category-tile '+(selectedCustomerCategory===c.key?'active':'')+'" onclick="selectCustomerCategory(\''+c.key+'\')"><span style="font-size:25px">'+c.icon+'</span><strong>'+c.name+'</strong><small>'+counts[c.key]+' محل</small></button>').join('');
  const shopCards=visible.map(shop=>'<div class="shop-card"><div class="shop-card-title">🏪 '+escapeText(shop.name)+'</div><div class="shop-card-meta">'+escapeText(shop.address||'العنوان غير مضاف')+' · '+escapeText(shop.activity_type||'النشاط غير محدد')+(customerSortByDistance&&Number.isFinite(shop.distanceKm)?' · يبعد عنك حوالي '+shop.distanceKm.toFixed(1)+' كم':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:9px 0"><span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">⚠️ لا توجد صور مضافة للمحل</span>'+((!shop.address||!shop.activity_type)?'<span style="background:#fff4e5;color:#925000;border:1px solid #f1c27d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700">بيانات المحل غير مكتملة</span>':'')+'</div>'+((shop.products||[]).length?(shop.products||[]).map(p=>'<div style="border-top:1px solid #dce6f5;padding:10px 0;display:flex;gap:10px;align-items:flex-start">'+(p.image_path?'<img src="'+escapeText(sbClient.storage.from('shop-images').getPublicUrl(p.image_path).data.publicUrl)+'" alt="'+escapeText(p.name)+'" style="width:82px;height:82px;object-fit:cover;border-radius:10px">':'')+'<div style="flex:1"><b>'+escapeText(p.name)+'</b><br><b>'+Number(p.price).toFixed(2)+' جنيه</b>'+(p.description?'<p class="small" style="margin:4px 0">'+escapeText(p.description)+'</p>':'')+'<button class="action secondary" style="padding:8px 12px;font-size:14px" onclick="addCustomerProduct('+Number(shop.id)+','+Number(p.id)+')">أضف للسلة</button></div></div>').join(''):'<p class="small">لم تُضف منتجات لهذا المحل بعد.</p>')+'</div>').join('');
