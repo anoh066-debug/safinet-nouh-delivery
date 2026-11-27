@@ -1405,28 +1405,31 @@ async function saveDeliveryTariff(id){
 function toggleVodafoneInfo(){const p=document.getElementById('paymentMethod');const box=document.getElementById('vodafoneInfo');if(p&&box)box.style.display=p.value==='vodafone'?'block':'none';}
 async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
- box.textContent='جارٍ تحميل المحلات المعتمدة...';
- const c=getSB();
- const publicRead=async path=>{
-  const controller=new AbortController();
-  const timeout=new Promise((_,reject)=>setTimeout(()=>{controller.abort();reject(new Error('انتهت مهلة الاتصال بقاعدة البيانات بعد 12 ثانية. اضغط إعادة المحاولة.'));},12000));
-  const request=(async()=>{
-   const response=await fetch(c.url+'/rest/v1/'+path,{method:'GET',headers:{apikey:c.key,'Authorization':'Bearer '+c.key,'Accept':'application/json'},signal:controller.signal,cache:'no-store'});
+ box.textContent='جارٍ الاتصال بقاعدة البيانات لتحميل المحلات...';
+ const readPublic=async(path,c)=>{
+  const controller=new AbortController();let timer;
+  try{
+   const request=fetch(c.url+'/rest/v1/'+path,{method:'GET',headers:{apikey:c.key,'Authorization':'Bearer '+c.key,'Accept':'application/json'},signal:controller.signal,cache:'no-store'});
+   const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('انتهت مهلة الاتصال بعد 12 ثانية.'));},12000);});
+   const response=await Promise.race([request,timeout]);
    if(!response.ok){let detail='';try{const data=await response.json();detail=data.message||data.details||data.hint||'';}catch(e){}throw new Error(detail||'تعذر قراءة البيانات ('+response.status+').');}
    return await response.json();
-  })();
-  return await Promise.race([request,timeout]);
+  }finally{if(timer)clearTimeout(timer);}
  };
  try{
-  const [shops,products]=await Promise.all([
-   publicRead('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc'),
-   publicRead('products?select=id,shop_id,name,price,description,image_path&is_available=eq.true&order=name.asc')
-  ]);
-  customerCatalog=shops.map(shop=>({...shop,products:products.filter(product=>String(product.shop_id)===String(shop.id))}));
-  if(!customerCatalog.length){box.innerHTML='<p>لا توجد محلات معتمدة متاحة حاليًا. تابعنا، وسيظهر المحل هنا فور اعتماده.</p>';return;}
+  const c=getSB();
+  if(!c.url||!c.key)throw new Error('إعدادات الاتصال بقاعدة البيانات غير مكتملة.');
+  box.textContent='تم الاتصال، جارٍ تحميل المحلات...';
+  const shops=await readPublic('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc',c);
+  customerCatalog=(Array.isArray(shops)?shops:[]).map(shop=>({...shop,products:[]}));
+  selectedCustomerCategory=null;selectedCustomerShopId=null;
+  renderCustomerCatalog();
+  if(!customerCatalog.length)return;
+  const products=await readPublic('products?select=id,shop_id,name,price,description,image_path&is_available=eq.true&order=name.asc',c);
+  customerCatalog=customerCatalog.map(shop=>({...shop,products:products.filter(product=>String(product.shop_id)===String(shop.id))}));
   renderCustomerCatalog();
  }catch(e){
-  box.innerHTML='<p>تعذر تحميل قائمة المحلات.</p><p class="small">السبب: '+escapeText(e.message||'تعذر الاتصال')+'</p><button type="button" class="action secondary" onclick="loadCustomerCatalog()">إعادة تحميل المحلات</button>';
+  box.innerHTML='<p>تعذر تحميل قائمة المحلات.</p><p class="small">سبب المشكلة: '+escapeText(e&&e.message?e.message:String(e||'خطأ غير معروف'))+'</p><button type="button" class="action secondary" onclick="loadCustomerCatalog()">إعادة تحميل المحلات</button>';
  }
 }
 const CUSTOMER_CATEGORIES=[
