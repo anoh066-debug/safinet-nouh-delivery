@@ -1393,15 +1393,24 @@ function toggleVodafoneInfo(){const p=document.getElementById('paymentMethod');c
 async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
+ const publicRead=async path=>{
+  const c=getSB(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+  try{
+   const response=await fetch(c.url+'/rest/v1/'+path,{method:'GET',headers:{apikey:c.key,'Authorization':'Bearer '+c.key,'Accept':'application/json'},signal:controller.signal});
+   if(!response.ok){let detail='';try{const data=await response.json();detail=data.message||data.details||data.hint||'';}catch(e){}throw new Error(detail||'تعذر قراءة بيانات المتاجر ('+response.status+').');}
+   return await response.json();
+  }catch(e){if(e.name==='AbortError')throw new Error('الاتصال بقاعدة البيانات استغرق وقتًا طويلًا. اضغط رجوع ثم افتح صفحة العميل مرة أخرى.');throw e;}
+  finally{clearTimeout(timer);}
+ };
  try{
-  const shops=await sbRequest('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc');
-  customerCatalog=[];
-  for(const shop of shops){
-   const products=await sbRequest('products?select=id,name,price,description,image_path&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
-   customerCatalog.push({...shop,products});
-  }
+  const shops=await publicRead('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc');
+  customerCatalog=await Promise.all(shops.map(async shop=>{
+   const products=await publicRead('products?select=id,name,price,description,image_path&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
+   return {...shop,products};
+  }));
+  if(!customerCatalog.length){box.innerHTML='<p>لا توجد محلات معتمدة متاحة حاليًا. تابعنا، وسيظهر المحل هنا فور اعتماده.</p>';return;}
   renderCustomerCatalog();
- }catch(e){box.innerHTML='<p>تعذر تحميل قائمة المحلات من قاعدة البيانات. تأكد من اتصال التطبيق وصلاحية عرض المحلات والمنتجات.</p><p class="small">رسالة النظام: '+escapeText(e.message||'تعذر الاتصال')+'</p>';}
+ }catch(e){box.innerHTML='<p>تعذر تحميل قائمة المحلات من قاعدة البيانات.</p><p class="small">رسالة النظام: '+escapeText(e.message||'تعذر الاتصال')+'</p>';}
 }
 const CUSTOMER_CATEGORIES=[
  {key:'market',icon:'🛒',name:'سوبر ماركت وبقالة',hint:'احتياجات البيت اليومية'},
