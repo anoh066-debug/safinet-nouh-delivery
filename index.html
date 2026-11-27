@@ -1242,7 +1242,23 @@ async function recordRiderPayout(event,riderId){
  }catch(e){alert('تعذر تسجيل الدفعة: '+(e.message||'خطأ'));}
 }
 
-async function renderOrders(){const box=document.getElementById('adminOrdersContent');if(!box)return;box.textContent='جارٍ التحقق من دخول الإدارة...';try{await requireAdminSession();box.textContent='جارٍ تحميل الطلبات...';const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);const cloud=await sbRequest('orders?select=*&order=created_at.desc');let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(local.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب محلي')+'</b><br>العميل: '+escapeText(x.customer_name||'—')+'<br>المحل: '+escapeText(x.shop_name||'—')+'<br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.order_status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات محلية.</p>');html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloud.map(x=>'<div class="record"><b>طلب '+escapeText(x.id)+'</b><br>الاستلام: '+escapeText(x.pickup_address||'—')+'<br>التوصيل: '+escapeText(x.delivery_address||'—')+'<br>الحالة: '+escapeText(x.status||'جديد')+'</div>').join('')||'<p>لا توجد طلبات سحابية.</p>');box.innerHTML=html;}catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}}
+async function renderOrders(){
+ const box=document.getElementById('adminOrdersContent');if(!box)return;
+ box.textContent='جارٍ التحقق من دخول الإدارة...';
+ try{
+  await requireAdminSession();
+  box.textContent='جارٍ تحميل الطلبات...';
+  const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);
+  const cloud=await sbRequest('orders?select=*&order=created_at.desc');
+  const field=(o,...keys)=>{for(const k of keys){const v=o&&o[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v;}return '—';};
+  const localHtml=local.map(x=>'<div class="record"><b>'+escapeText(field(x,'local_order_no')==='—'?'طلب محلي':field(x,'local_order_no'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>هاتف العميل: '+escapeText(field(x,'customer_phone'))+'<br>المحل: '+escapeText(field(x,'shop_name'))+'<br>الاستلام: '+escapeText(field(x,'pickup_address','shop_address'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: '+escapeText(field(x,'order_status','status','جديد'))+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>').join('');
+  const cloudHtml=cloud.map(x=>'<div class="record"><b>طلب '+escapeText(field(x,'id'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>هاتف العميل: '+escapeText(field(x,'customer_phone','contact_phone'))+'<br>المحل: '+escapeText(field(x,'shop_name'))+'<br>الاستلام: '+escapeText(field(x,'pickup_address','shop_address'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: '+escapeText(field(x,'status','order_status','جديد'))+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>').join('');
+  let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(localHtml||'<p>لا توجد طلبات محلية.</p>');
+  html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloudHtml||'<p>لا توجد طلبات سحابية.</p>');
+  box.innerHTML=html;
+ }catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}
+}
+
 function previewShopRegistrationImages(){
  const storefront=document.getElementById('merchantStorefrontImage');
  const products=document.getElementById('merchantProductImages');
