@@ -423,11 +423,11 @@ if ("serviceWorker" in navigator) {
 <div id="checkoutSection" class="notice" style="display:none;margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>بيانات التوصيل وإتمام الطلب</h2>
 <div class="form" style="padding:0">
-<label for="checkoutName">اسم العميل</label><input id="checkoutName" required placeholder="الاسم بالكامل">
-<label for="checkoutPhone">رقم الهاتف</label><input id="checkoutPhone" required inputmode="tel" placeholder="01xxxxxxxxx">
-<label for="checkoutAddress">عنوان التسليم</label><input id="checkoutAddress" required placeholder="المنطقة والعنوان بالتفصيل" oninput="syncDropAddress()">
+<label for="checkoutName">اسم العميل</label><input id="checkoutName" required maxlength="120" placeholder="الاسم بالكامل" oninput="invalidateCustomerInvoice()">
+<label for="checkoutPhone">رقم الهاتف</label><input id="checkoutPhone" required inputmode="tel" maxlength="15" placeholder="01xxxxxxxxx" oninput="invalidateCustomerInvoice()">
+<input id="checkoutAddress" type="hidden">
 <label for="pickupAddress">عنوان المحل (مكان الاستلام)</label><input id="pickupAddress" readonly placeholder="يظهر تلقائيًا من بيانات المحل">
-<label for="dropAddress">عنوان التسليم</label><input id="dropAddress" placeholder="اكتب عنوانك بالتفصيل" oninput="document.getElementById('checkoutAddress').value=this.value;dropCoords=null;routeDistanceKm=null;customerInvoice=null">
+<label for="dropAddress">عنوان التسليم</label><input id="dropAddress" required minlength="5" maxlength="500" placeholder="المنطقة والشارع ورقم العقار وأقرب علامة مميزة" oninput="syncDropAddress()">
 <p class="small">موقع المحل محفوظ مسبقًا من بيانات تسجيل صاحب المحل. حدّد عنوان التسليم فقط على الخريطة أو استخدم موقعك الحالي.</p>
 <div class="row" style="gap:8px;flex-wrap:wrap">
 <button class="action secondary" type="button" onclick="setMapPickMode('drop')">تحديد موقع التسليم على الخريطة</button>
@@ -437,11 +437,11 @@ if ("serviceWorker" in navigator) {
 <div id="deliveryMap" style="height:280px;border-radius:14px;margin-top:12px;background:#eaf2ff"></div>
 <button class="action" type="button" onclick="calculateDeliveryRoute()">احسب المسافة ورسوم التوصيل</button>
 <div id="routeResult" class="small" aria-live="polite"></div>
-<label for="paymentMethod">طريقة الدفع</label><select id="paymentMethod" onchange="toggleVodafoneInfo()"><option value="cash">نقدي عند الاستلام</option><option value="vodafone">فودافون كاش</option></select>
+<label for="paymentMethod">طريقة الدفع</label><select id="paymentMethod" onchange="toggleVodafoneInfo();invalidateCustomerInvoice()"><option value="cash">نقدي عند الاستلام</option><option value="vodafone">فودافون كاش</option></select>
 <div id="vodafoneInfo" class="record" style="display:none"><b>رقم فودافون كاش للتحويل:</b><br><span style="font-size:20px;font-weight:bold;direction:ltr;display:inline-block">01094881059</span><br><small>حوّل إجمالي الفاتورة على الرقم الموضح.</small></div>
 <button class="action secondary" type="button" onclick="previewCustomerInvoice()">مراجعة الفاتورة</button>
 <div id="invoicePreview" class="record" style="display:none;text-align:right" aria-live="polite"></div>
-<button class="action" type="button" onclick="confirmCustomerOrder()">تأكيد الشراء وإرسال الطلب</button>
+<button class="action" id="confirmCustomerOrderButton" type="button" onclick="confirmCustomerOrder()">تأكيد الشراء وإرسال الطلب</button>
 <div id="orderFeedback" class="small" aria-live="polite"></div>
 </div></div>
 </section>
@@ -1321,7 +1321,8 @@ function setMapPickMode(mode){
  const hint=document.getElementById('mapPickHint');if(hint)hint.textContent=mode==='pickup'?'اضغط على الخريطة عند موقع المحل لتثبيت نقطة الاستلام.':'اضغط على الخريطة عند مكان التسليم لتثبيت موقعك.';
  if(deliveryMap)deliveryMap.invalidateSize();
 }
-function syncDropAddress(){const a=document.getElementById('checkoutAddress'),d=document.getElementById('dropAddress');if(a&&d)d.value=a.value;dropCoords=null;routeDistanceKm=null;customerInvoice=null;}
+function syncDropAddress(){const a=document.getElementById('checkoutAddress'),d=document.getElementById('dropAddress');if(a&&d)a.value=d.value;dropCoords=null;routeDistanceKm=null;invalidateCustomerInvoice();}
+function invalidateCustomerInvoice(){customerInvoice=null;const box=document.getElementById('invoicePreview');if(box){box.style.display='none';box.innerHTML='';}}
 async function geocodeAddress(address){
  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=eg&q='+encodeURIComponent(address+', مدينة السادات، مصر');
  const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('تعذر البحث عن العنوان على الخريطة. اختار الموقع يدويًا.');
@@ -1563,24 +1564,27 @@ function renderCustomerCart(){
  box.innerHTML=customerCart.length?[...groups.entries()].map(([shopId,g])=>'<div class="record"><h3>'+escapeText(g.name)+'</h3>'+g.items.map(x=>'<div class="row" style="justify-content:space-between"><span>'+escapeText(x.name)+' — '+x.price.toFixed(2)+' ج × '+x.qty+'</span><b>'+(x.price*x.qty).toFixed(2)+' ج</b></div><div class="row" style="justify-content:flex-start;align-items:center;gap:10px;margin:6px 0 10px"><button class="action secondary" style="padding:6px 14px;min-width:42px" data-shop-id="'+escapeText(shopId)+'" data-product-id="'+escapeText(x.productId)+'" onclick="changeCustomerQty(this.dataset.shopId,this.dataset.productId,-1)">−</button><b style="min-width:28px;text-align:center;font-size:17px;color:#073b91">'+x.qty+'</b><button class="action secondary" style="padding:6px 14px;min-width:42px" data-shop-id="'+escapeText(shopId)+'" data-product-id="'+escapeText(x.productId)+'" onclick="changeCustomerQty(this.dataset.shopId,this.dataset.productId,1)">+</button></div>').join('')+'<div style="text-align:left;font-weight:bold">إجمالي '+escapeText(g.name)+': '+g.sum.toFixed(2)+' جنيه</div></div>').join(''):'السلة فارغة.';
 }
 function previewCustomerInvoice(){
- const name=document.getElementById('checkoutName').value.trim(),phone=document.getElementById('checkoutPhone').value.trim(),address=document.getElementById('checkoutAddress').value.trim();
+ const name=document.getElementById('checkoutName').value.trim(),phone=document.getElementById('checkoutPhone').value.replace(/\s/g,''),address=document.getElementById('dropAddress').value.trim();
  if(!customerCart.length){alert('أضف منتجات إلى السلة أولاً.');return;}
  if(new Set(customerCart.map(x=>String(x.shopId))).size!==1){alert('كل طلب يجب أن يكون من محل واحد. راجع السلة قبل المتابعة.');return;}
- if(!name||!/^01[0-9]{9}$/.test(phone.replace(/\s/g,''))||!address){alert('أكمل الاسم ورقم الهاتف المصري وعنوان التسليم.');return;}
+ if(!name||name.length<2||name.length>120||!/^01[0-9]{9}$/.test(phone)||address.length<5||address.length>500){alert('راجع الاسم ورقم الهاتف، واكتب عنوان التسليم بالتفصيل (5 أحرف على الأقل).');return;}
  if(routeDistanceKm===null){alert('احسب مسافة الطريق من جميع المحلات إلى عنوان العميل أولاً.');return;}
  const tariff=deliveryFeeForDistance(routeDistanceKm);if(tariff===null){alert('المسافة خارج نطاق شرائح التسعيرة المحفوظة. تواصل مع الإدارة.');return;}
  const groups={};customerCart.forEach(x=>{const k=String(x.shopId);if(!groups[k])groups[k]={shopId:x.shopId,shopName:x.shopName,pickup:x.shopAddress,items:[],subtotal:0};groups[k].items.push({...x});groups[k].subtotal+=x.price*x.qty;});
  const itemsTotal=customerCart.reduce((a,x)=>a+x.price*x.qty,0),delivery=tariff,total=Math.round((itemsTotal+delivery)*100)/100;
+ document.getElementById('checkoutPhone').value=phone;
  const payment=document.getElementById('paymentMethod').value;
  customerInvoice={name,phone,address,items:customerCart.map(x=>({...x})),shops:Object.values(groups),itemsTotal,distanceKm:routeDistanceKm,delivery,total,payment,shopName:Object.values(groups).map(x=>x.shopName).join('، '),pickup:Object.values(groups).map(x=>x.pickup).filter(Boolean).join('، ')};
  const box=document.getElementById('invoicePreview');box.style.display='block';
  box.innerHTML='<h3>فاتورة سفينة نوح دليفري</h3><p>العميل: '+escapeText(name)+'<br>الهاتف: '+escapeText(phone)+'<br>التسليم: '+escapeText(address)+'</p>'+customerInvoice.shops.map(g=>'<div class="record"><h3>'+escapeText(g.shopName)+'</h3><p>عنوان الاستلام: '+escapeText(g.pickup||'غير محدد')+'</p>'+g.items.map(x=>'<div class="row" style="justify-content:space-between"><span>'+escapeText(x.name)+' × '+x.qty+'</span><b>'+(x.price*x.qty).toFixed(2)+' ج</b></div>').join('')+'<div class="row" style="justify-content:space-between;font-weight:bold"><span>إجمالي المحل</span><b>'+g.subtotal.toFixed(2)+' جنيه</b></div></div>').join('')+'<hr><div class="row" style="justify-content:space-between"><span>إجمالي المشتريات</span><b>'+itemsTotal.toFixed(2)+' جنيه</b></div><div class="row" style="justify-content:space-between"><span>المسافة من المحل للعميل</span><b>'+routeDistanceKm.toFixed(2)+' كم</b></div><div class="row" style="justify-content:space-between"><span>تكلفة الشحن حسب التسعيرة</span><b>'+delivery.toFixed(2)+' جنيه</b></div><div class="row" style="justify-content:space-between;font-size:18px"><b>الإجمالي النهائي</b><b>'+total.toFixed(2)+' جنيه</b></div><p>طريقة الدفع: '+(payment==='vodafone'?'فودافون كاش — 01094881059':'نقدي عند الاستلام')+'</p>';
 }
 async function confirmCustomerOrder(){
- if(!customerInvoice){alert('راجع الفاتورة أولاً قبل تأكيد الشراء.');return;}
+ if(!customerInvoice){alert('راجع الفاتورة أولاً بعد التأكد من البيانات.');return;}
+ const button=document.getElementById('confirmCustomerOrderButton');if(button&&button.disabled)return;
+ if(button){button.disabled=true;button.textContent='جارٍ إرسال الطلب...';}
  const inv=customerInvoice;
  const payload={...inv,createdAt:new Date().toISOString(),paymentPhone:inv.payment==='vodafone'?'01094881059':null};
- const localNo='SN-'+Date.now();
+ const localNo=inv.local_order_no||(inv.local_order_no='SN-'+Date.now());
  const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');
  const localRow={...payload,local_order_no:localNo,order_status:'جديد'};
  const feedback=document.getElementById('orderFeedback');
@@ -1605,13 +1609,17 @@ async function confirmCustomerOrder(){
    p_total_amount:inv.total
   });
   if(orderError)throw orderError;
-  rows.unshift({...localRow,cloud_order_id:result});
-  localStorage.setItem('safinet_orders',JSON.stringify(rows));
+  const savedRows=rows.filter(x=>x.local_order_no!==localNo);
+  savedRows.unshift({...localRow,cloud_order_id:result,order_status:'تم الإرسال'});
+  localStorage.setItem('safinet_orders',JSON.stringify(savedRows));
   feedback.textContent='تم إرسال الطلب إلى قاعدة البيانات بنجاح. رقم الطلب: '+String(result);
   customerCart=[];localStorage.removeItem('safinet_customer_cart');renderCustomerCart();customerInvoice=null;document.getElementById('invoicePreview').style.display='none';
  }catch(e){
-  rows.unshift(localRow);localStorage.setItem('safinet_orders',JSON.stringify(rows));
-  feedback.textContent='لم يصل الطلب إلى قاعدة البيانات؛ تم حفظ نسخة على هذا الهاتف فقط. '+(e.message||'تعذر الاتصال');
+  if(!rows.some(x=>x.local_order_no===localNo))rows.unshift(localRow);
+  localStorage.setItem('safinet_orders',JSON.stringify(rows));
+  feedback.textContent='لم يصل الطلب إلى قاعدة البيانات؛ تم حفظ نسخة على هذا الهاتف فقط. يمكنك المحاولة مرة أخرى بعد حل السبب: '+(e.message||'تعذر الاتصال');
+ }finally{
+  if(button){button.disabled=false;button.textContent='تأكيد الشراء وإرسال الطلب';}
  }
 }
 function showMyOrders(){const box=document.getElementById('myOrders');if(!box)return;const rows=JSON.parse(localStorage.getItem('safinet_orders')||'[]');box.innerHTML=rows.length?rows.map(x=>'<div class="record"><b>'+escapeText(x.local_order_no||'طلب')+'</b><br>المحل: '+escapeText(x.shopName||x.shop_name||'—')+'<br>الإجمالي: '+Number(x.total||0).toFixed(2)+' جنيه<br>الحالة: '+escapeText(x.order_status||x.status||'جديد')+'</div>').join(''):'لا توجد طلبات محفوظة على هذا الهاتف.';}
