@@ -1350,6 +1350,12 @@ function deliveryFeeForDistance(km){
  const band=sorted.find((x,i)=>km>=x.min&&(km<x.max||(i===sorted.length-1&&km<=x.max)));
  return band?band.fee:null;
 }
+function showAdminDistanceContact(message){
+ const out=document.getElementById('routeResult');
+ const text=message||'المسافة خارج نطاق التسعيرة المحددة. تواصل مع الإدارة لمعرفة تكلفة التوصيل قبل تأكيد الطلب.';
+ const wa='https://wa.me/201094881059?text='+encodeURIComponent('مرحبًا، أحتاج الاستفسار عن توصيل خارج نطاق التسعيرة في تطبيق سفينة نوح دليفري. '+(Number.isFinite(routeDistanceKm)?'المسافة المحسوبة: '+routeDistanceKm.toFixed(2)+' كم. ':'')+'برجاء توضيح تكلفة التوصيل.');
+ out.innerHTML='<div>'+escapeText(text)+'</div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px"><a class="action" style="display:inline-block;text-decoration:none;text-align:center" href="tel:01094881059">اتصال بالإدارة</a><a class="action secondary" style="display:inline-block;text-decoration:none;text-align:center" href="'+wa+'" target="_blank" rel="noopener">واتساب الإدارة</a></div><small>لن يتم تأكيد الطلب إلا بعد معرفة السعر وموافقتك عليه.</small>';
+}
 async function calculateDeliveryRoute(){
  const out=document.getElementById('routeResult'),drop=document.getElementById('dropAddress').value.trim();
  if(!customerCart.length){out.textContent='أضف منتجات من محل واحد أولاً.';return;}
@@ -1372,7 +1378,7 @@ async function calculateDeliveryRoute(){
   routeLayer=L.geoJSON({type:'Feature',geometry:route.geometry},{style:{color:'#f47700',weight:5}}).addTo(deliveryMap);
   deliveryMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
   const fee=deliveryFeeForDistance(routeDistanceKm);
-  if(fee===null){out.textContent='المسافة '+routeDistanceKm.toFixed(2)+' كم، وهي خارج نطاق شرائح التسعيرة المسجلة. تواصل مع الإدارة قبل تأكيد الطلب.';return;}
+  if(fee===null){showAdminDistanceContact('المسافة '+routeDistanceKm.toFixed(2)+' كم، وهي خارج نطاق شرائح التسعيرة المسجلة. تواصل مع الإدارة لمعرفة السعر قبل تأكيد الطلب.');return;}
   out.textContent='المسافة من المحل إلى عنوانك: '+routeDistanceKm.toFixed(2)+' كم — رسوم التوصيل حسب قائمة الإدارة: '+fee.toFixed(2)+' جنيه.';
   customerInvoice=null;
  }catch(e){routeDistanceKm=null;out.textContent=e.message||'حدث خطأ أثناء حساب المسافة.';}
@@ -1569,7 +1575,7 @@ function previewCustomerInvoice(){
  if(new Set(customerCart.map(x=>String(x.shopId))).size!==1){alert('كل طلب يجب أن يكون من محل واحد. راجع السلة قبل المتابعة.');return;}
  if(!name||name.length<2||name.length>120||!/^01[0-9]{9}$/.test(phone)||address.length<5||address.length>500){alert('راجع الاسم ورقم الهاتف، واكتب عنوان التسليم بالتفصيل (5 أحرف على الأقل).');return;}
  if(routeDistanceKm===null){alert('احسب مسافة الطريق من جميع المحلات إلى عنوان العميل أولاً.');return;}
- const tariff=deliveryFeeForDistance(routeDistanceKm);if(tariff===null){alert('المسافة خارج نطاق شرائح التسعيرة المحفوظة. تواصل مع الإدارة.');return;}
+ const tariff=deliveryFeeForDistance(routeDistanceKm);if(tariff===null){showAdminDistanceContact('المسافة خارج نطاق شرائح التسعيرة المحفوظة. تواصل مع الإدارة لمعرفة السعر قبل تأكيد الطلب.');document.getElementById('routeResult').scrollIntoView({behavior:'smooth',block:'center'});return;}
  const groups={};customerCart.forEach(x=>{const k=String(x.shopId);if(!groups[k])groups[k]={shopId:x.shopId,shopName:x.shopName,pickup:x.shopAddress,items:[],subtotal:0};groups[k].items.push({...x});groups[k].subtotal+=x.price*x.qty;});
  const itemsTotal=customerCart.reduce((a,x)=>a+x.price*x.qty,0),delivery=tariff,total=Math.round((itemsTotal+delivery)*100)/100;
  document.getElementById('checkoutPhone').value=phone;
