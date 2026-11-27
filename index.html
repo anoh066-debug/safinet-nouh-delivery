@@ -559,7 +559,7 @@ if ("serviceWorker" in navigator) {
   target.classList.add('active');
   window.scrollTo(0,0);
   if(destination==='customer'){
-   if(typeof playCustomerWelcome==='function')playCustomerWelcome();
+   
    if(typeof ensureCustomerIdentity==='function')ensureCustomerIdentity();
    if(typeof loadCustomerCatalog==='function')loadCustomerCatalog();
    else {const box=document.getElementById('shopCatalog');if(box)box.textContent='تعذر تشغيل تحميل المحلات. أعد فتح التطبيق أو تواصل مع الإدارة.';}
@@ -682,7 +682,7 @@ function renderSafinetScreen(id){
  if(!target||!target.classList.contains('screen'))return;
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  target.classList.add('active');
- if(id==='customer'){if(typeof playCustomerWelcome==='function')playCustomerWelcome();ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
+ if(id==='customer'){ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
  if(id==='merchant'){setTimeout(initMerchantMap,180);}
  if(id==='admin')showAdminAccess();
  window.scrollTo(0,0);
