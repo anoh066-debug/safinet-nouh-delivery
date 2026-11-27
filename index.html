@@ -558,9 +558,11 @@ if ("serviceWorker" in navigator) {
   document.querySelectorAll('.screen').forEach(function(screen){screen.classList.remove('active');});
   target.classList.add('active');
   window.scrollTo(0,0);
-  if(destination==='customer'&&typeof ensureCustomerIdentity==='function'){
+  if(destination==='customer'){
    if(typeof playCustomerWelcome==='function')playCustomerWelcome();
-   ensureCustomerIdentity(); if(typeof loadCustomerCatalog==='function')loadCustomerCatalog();
+   if(typeof ensureCustomerIdentity==='function')ensureCustomerIdentity();
+   if(typeof loadCustomerCatalog==='function')loadCustomerCatalog();
+   else {const box=document.getElementById('shopCatalog');if(box)box.textContent='تعذر تشغيل تحميل المحلات. أعد فتح التطبيق أو تواصل مع الإدارة.';}
    if(typeof renderCustomerCart==='function')renderCustomerCart();
    if(typeof loadDeliveryPricing==='function')loadDeliveryPricing().catch(function(){});
    if(typeof initDeliveryMap==='function')setTimeout(function(){initDeliveryMap();},250);
