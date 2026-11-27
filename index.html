@@ -503,7 +503,7 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" type="button" onclick="testSupabase()">اختبار الاتصال</button>
 <div id="connectionStatus" class="small" aria-live="polite"></div>
 </div>
-<form class="form" onsubmit="adminSignIn(event)">
+<form class="form" id="adminSignInForm">
 <label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" placeholder="البريد الإلكتروني للإدارة" autocomplete="off" required>
 <label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="new-password" required>
 <button class="action" type="submit">تسجيل الدخول</button><div id="adminLoginStatus" class="small" aria-live="polite"></div>
@@ -1721,6 +1721,23 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 
+</script>
+<script>
+/* حماية مستقلة لنموذج دخول الإدارة حتى لا يعيد المتصفح تحميل الصفحة */
+(function(){
+ const form=document.getElementById('adminSignInForm');
+ if(!form)return;
+ form.addEventListener('submit',function(event){
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const status=document.getElementById('adminLoginStatus');
+  if(typeof window.adminSignIn==='function'){
+   window.adminSignIn(event);
+  }else if(status){
+   status.textContent='تعذر تشغيل وحدة تسجيل الدخول. أعد فتح التطبيق، وإذا تكرر الخطأ سنراجع تحميل ملفات التطبيق.';
+  }
+ });
+})();
 </script>
 </body>
 </html>
