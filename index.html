@@ -735,6 +735,24 @@ async function refreshMerchantOrders(){
   box.innerHTML=(orders.length?'<h3>طلبات المنتجات</h3>'+orders.map(o=>card(o,'store')).join(''):'')+(deliveryOrders.length?'<h3>طلبات التوصيل من محلك</h3>'+deliveryOrders.map(o=>card(o,'delivery')).join(''):'')||'لا توجد طلبات مسجلة لمحلك حتى الآن.';
  }catch(e){status.textContent='تعذر تحميل طلبات المحل: '+(e.message||'خطأ في الاتصال');}
 }
+async function decideShopOrder(orderId,decision,button){
+ if(button)button.disabled=true;
+ try{
+  if(!sbClient||!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات. أعد فتح حساب المحل.');
+  const sessionResult=await sbClient.auth.getSession();
+  if(sessionResult.error)throw sessionResult.error;
+  if(!sessionResult.data?.session?.user)throw new Error('انتهت جلسة المحل. سجّل الدخول مرة أخرى.');
+  const {data,error}=await sbClient.rpc('shop_decide_order',{p_order_id:Number(orderId),p_decision:decision});
+  if(error)throw error;
+  if(!data)throw new Error('لم يصل تأكيد من قاعدة البيانات.');
+  alert(decision==='accept'?'تم قبول الطلب بنجاح، وسيظهر للمندوبين.':'تم رفض الطلب بنجاح.');
+  await refreshMerchantOrders();
+ }catch(e){
+  alert('لم يتم تنفيذ الإجراء: '+(e.message||'خطأ غير معروف'));
+  if(button)button.disabled=false;
+ }
+}
+
 async function decideShopDeliveryOrder(orderId,decision,button){
  if(button)button.disabled=true;
  try{const {error}=await sbClient.rpc('shop_decide_delivery_order',{p_order_id:Number(orderId),p_decision:decision});if(error)throw error;alert(decision==='accept'?'تم قبول طلب التوصيل وسيظهر للمندوبين.':'تم رفض طلب التوصيل.');await refreshMerchantOrders();}
