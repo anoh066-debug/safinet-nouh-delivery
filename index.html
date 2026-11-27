@@ -267,32 +267,35 @@ async function submitDeliveryOrder(event){
  event.preventDefault();
  const val=id=>document.getElementById(id).value.trim();
  const order={
-  customer_name:val('orderCustomerName'), customer_phone:val('orderCustomerPhone'),
-  shop_name:val('orderShopName'), pickup_address:val('orderPickup'),
-  delivery_address:val('orderDrop'), order_details:val('orderDetails'),
-  order_status:'جديد', local_order_no:'SN-'+Date.now(),
-  created_at:new Date().toISOString()
+  customer_name:val('orderCustomerName'),customer_phone:val('orderCustomerPhone'),
+  shop_name:val('orderShopName'),pickup_address:val('orderPickup'),
+  delivery_address:val('orderDrop'),order_details:val('orderDetails'),
+  order_status:'جديد',local_order_no:'SN-'+Date.now(),created_at:new Date().toISOString()
  };
- const feedback=document.getElementById('orderFeedback');
- feedback.textContent='جارٍ حفظ الطلب...';
- const rows=getLocalOrders(); rows.unshift(order);
- try{setLocalOrders(rows)}catch(e){feedback.textContent='تعذر حفظ الطلب على الهاتف. تأكد من مساحة التخزين ثم حاول مرة أخرى.';return}
- let remote=false, remoteMessage='';
+ const feedback=document.getElementById('orderFeedback'),form=event.currentTarget;
+ const rows=getLocalOrders();rows.unshift(order);
+ try{setLocalOrders(rows);}catch(e){feedback.textContent='تعذر حفظ الطلب على الهاتف. تأكد من مساحة التخزين ثم حاول مرة أخرى.';return;}
+ feedback.textContent='جارٍ تأمين حساب العميل وإرسال طلب التوصيل...';
  try{
-  await sbRequest('orders','POST',{
-   customer_name:order.customer_name, customer_phone:order.customer_phone,
-   shop_name:order.shop_name, pickup_address:order.pickup_address,
-   delivery_address:order.delivery_address, order_details:order.order_details,
-   status:'pending'
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
+  let {data:{session},error}=await sbClient.auth.getSession();if(error)throw error;
+  if(session&&session.user&&session.user.app_metadata&&session.user.app_metadata.role==='admin')throw new Error('افتح نموذج العميل من نافذة منفصلة عن حساب الإدارة.');
+  if(!session){const z=await sbClient.auth.signInAnonymously();if(z.error)throw z.error;session=z.data.session;}
+  if(!session||!session.user)throw new Error('تعذر تأمين هوية العميل.');
+  const {data:id,error:saveError}=await sbClient.rpc('submit_direct_delivery_order',{
+   p_customer_name:order.customer_name,p_customer_phone:order.customer_phone,
+   p_pickup_name:order.shop_name,p_pickup_address:order.pickup_address,
+   p_delivery_address:order.delivery_address,p_order_details:order.order_details
   });
-  remote=true;
- }catch(e){remoteMessage=e.message||'لم يتم الاتصال بقاعدة البيانات'}
- event.currentTarget.reset();
- feedback.innerHTML=remote
-  ? '<b>تم إرسال الطلب إلى قاعدة البيانات بنجاح.</b><br>رقم المتابعة المحلي: '+escapeText(order.local_order_no)
-  : '<b>تم حفظ الطلب على هذا الهاتف فقط.</b><br>رقم الطلب: '+escapeText(order.local_order_no)+'<br>لكي يظهر للمندوبين على هواتف أخرى يجب ربط قاعدة البيانات من الإدارة. '+escapeText(remoteMessage);
- playSafinetNotice();
- showMyOrders();
+  if(saveError)throw saveError;
+  const saved=getLocalOrders().map(x=>x.local_order_no===order.local_order_no?{...x,cloud_order_id:id,order_status:'تم الإرسال'}:x);
+  setLocalOrders(saved);
+  form.reset();
+  feedback.innerHTML='<b>تم إرسال طلب التوصيل إلى قاعدة البيانات.</b><br>رقم الطلب: '+escapeText(id)+' — سيظهر للمحل إذا كان مسجلًا ومعتمدًا، ثم للمندوبين حسب مسار الموافقة.';
+ }catch(e){
+  feedback.innerHTML='<b>لم يصل الطلب إلى قاعدة البيانات.</b><br>تم الاحتفاظ بنسخة على هذا الهاتف فقط. السبب: '+escapeText(e.message||'تعذر الاتصال');
+ }
+ playSafinetNotice();showMyOrders();
 }
 function shareOrInstallApp(){
  const menu=document.getElementById('shareInstallMenu');
@@ -707,40 +710,37 @@ async function refreshMerchantOrders(){
  try{
   if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
   const z=await sbClient.auth.getSession(),session=z.data&&z.data.session;
-  if(z.error)throw z.error;
-  if(!session||!session.user)throw new Error('افتح حساب المحل من نفس الهاتف الذي سجلت منه.');
+  if(z.error)throw z.error;if(!session||!session.user)throw new Error('افتح حساب المحل من نفس الهاتف الذي سجلت منه.');
   const shops=await sbRequest('shops?select=id,shop_name,is_active,is_registered&owner_id=eq.'+encodeURIComponent(session.user.id)+'&order=created_at.desc');
   if(!shops.length){status.textContent='لم أجد محلًا مسجلًا مرتبطًا بهذا الحساب. سجّل المحل من هذا الهاتف أولًا.';box.innerHTML='';return;}
-  const ids=shops.map(x=>Number(x.id)).filter(Number.isFinite);
-  if(!ids.length){status.textContent='تعذر تحديد رقم المحل.';return;}
-  const orders=await sbRequest('orders?select=id,shop_id,status,created_at,customer_name,customer_phone,delivery_address,total_amount,order_details,rider_id,rider_code,assigned_at&shop_id=in.('+ids.join(',')+')&order=created_at.desc');
+  const ids=shops.map(x=>Number(x.id)).filter(Number.isFinite);if(!ids.length){status.textContent='تعذر تحديد رقم المحل.';return;}
+  const [orders,deliveryOrders]=await Promise.all([
+   sbRequest('orders?select=id,shop_id,status,created_at,customer_name,customer_phone,delivery_address,total_amount,order_details,rider_id,rider_code,assigned_at&shop_id=in.('+ids.join(',')+')&order=created_at.desc'),
+   sbRequest('delivery_orders?select=id,shop_id,status,created_at,customer_name,contact_phone,pickup_name,pickup_address,delivery_address,order_details,rider_id&shop_id=in.('+ids.join(',')+')&order=created_at.desc')
+  ]);
   let changed=false;const next=new Map();
-  orders.forEach(o=>{const key=String(o.id),state=String(o.status||'جديد');if(merchantSeenOrderStates.size&&(!merchantSeenOrderStates.has(key)||merchantSeenOrderStates.get(key)!==state))changed=true;next.set(key,state);});
-  if(changed)playSafinetNotice('merchant');
-  merchantSeenOrderStates=next;
-  let events=[];
-  if(orders.length)events=await sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+orders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc');
-  const eventMap={};events.forEach(e=>(eventMap[String(e.order_id)]??=[]).push(e));
+  [...orders.map(o=>({...o,kind:'store'})),...deliveryOrders.map(o=>({...o,kind:'delivery'}))].forEach(o=>{const key=o.kind+':'+o.id,state=String(o.status||'جديد');if(merchantSeenOrderStates.size&&(!merchantSeenOrderStates.has(key)||merchantSeenOrderStates.get(key)!==state))changed=true;next.set(key,state);});
+  if(changed)playSafinetNotice('merchant');merchantSeenOrderStates=next;
+  const storeEvents=orders.length?await sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+orders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):[];
+  const deliveryEvents=deliveryOrders.length?await sbRequest('delivery_order_events?select=delivery_order_id,event_type,actor_role,actor_name,details,created_at&delivery_order_id=in.('+deliveryOrders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):[];
+  const eventMap={};storeEvents.forEach(e=>(eventMap['store:'+e.order_id]??=[]).push(e));deliveryEvents.forEach(e=>(eventMap['delivery:'+e.delivery_order_id]??=[]).push(e));
   status.textContent='تم ربط '+shops.length+' محل بحسابك — الطلبات المعروضة تخص محلاتك فقط.';
-  box.innerHTML=orders.length?orders.map(o=>{
-   const pending=['جديد','new','pending'].includes(String(o.status||'').toLowerCase());
-   const history=(eventMap[String(o.id)]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
-   return '<div class="record"><b>طلب #'+escapeText(o.id)+' — '+escapeText(o.status||'جديد')+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>الهاتف: '+escapeText(o.customer_phone||'—')+'<br>عنوان التسليم: '+escapeText(o.delivery_address||'—')+'<br>التفاصيل: '+escapeText(o.order_details||'—')+'<br>الإجمالي: '+Number(o.total_amount||0).toFixed(2)+' جنيه'+(o.rider_id?'<br>المندوب: '+escapeText(o.rider_code||'تم الإسناد'):'')+(pending?'<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px"><button class="action" type="button" onclick="decideShopOrder('+Number(o.id)+',\'accept\',this)">قبول وتجهيز الطلب</button><button class="action secondary" type="button" onclick="decideShopOrder('+Number(o.id)+',\'reject\',this)">رفض الطلب</button></div>':'')+(history?'<hr><b>سجل الإجراءات</b>'+history:'')+'<br><small>'+escapeText(o.created_at?new Date(o.created_at).toLocaleString('ar-EG'):'')+'</small></div>';
-  }).join(''):'لا توجد طلبات مسجلة لمحلك حتى الآن.';
+  const card=(o,kind)=>{
+   const key=kind+':'+o.id,pending=kind==='store'?['جديد','new','pending'].includes(String(o.status||'').toLowerCase()):o.status==='new';
+   const history=(eventMap[key]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
+   const phone=o.customer_phone||o.contact_phone||'—';
+   const actions=pending?'<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px"><button class="action" type="button" onclick="'+(kind==='store'?'decideShopOrder':'decideShopDeliveryOrder')+'('+Number(o.id)+',\'accept\',this)">قبول الطلب</button><button class="action secondary" type="button" onclick="'+(kind==='store'?'decideShopOrder':'decideShopDeliveryOrder')+'('+Number(o.id)+',\'reject\',this)">رفض الطلب</button></div>':'';
+   return '<div class="record"><b>'+(kind==='store'?'طلب متجر':'طلب توصيل')+' #'+escapeText(o.id)+' — '+escapeText(o.status||'جديد')+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>الهاتف: '+escapeText(phone)+'<br>الاستلام: '+escapeText(kind==='store'?(o.shop_name||'—'):((o.pickup_name||'')+' — '+(o.pickup_address||'')))+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'<br>التفاصيل: '+escapeText(o.order_details||'—')+(o.rider_id?'<br>تم إسناده لمندوب':'')+actions+(history?'<hr><b>سجل الإجراءات</b>'+history:'')+'<br><small>'+escapeText(o.created_at?new Date(o.created_at).toLocaleString('ar-EG'):'')+'</small></div>';
+  };
+  box.innerHTML=(orders.length?'<h3>طلبات المنتجات</h3>'+orders.map(o=>card(o,'store')).join(''):'')+(deliveryOrders.length?'<h3>طلبات التوصيل من محلك</h3>'+deliveryOrders.map(o=>card(o,'delivery')).join(''):'')||'لا توجد طلبات مسجلة لمحلك حتى الآن.';
  }catch(e){status.textContent='تعذر تحميل طلبات المحل: '+(e.message||'خطأ في الاتصال');}
 }
-async function decideShopOrder(orderId,decision,button){
+async function decideShopDeliveryOrder(orderId,decision,button){
  if(button)button.disabled=true;
- try{
-  const {data,error}=await sbClient.rpc('shop_decide_order',{p_order_id:Number(orderId),p_decision:decision});
-  if(error)throw error;
-  alert(decision==='accept'?'تم قبول الطلب. سيظهر الآن للمندوبين المتاحين.':'تم رفض الطلب وإبلاغ العميل بتحديث الحالة.');
-  await refreshMerchantOrders();
- }catch(e){
-  alert('لم يتم تنفيذ الإجراء: '+(e.message||'خطأ في الاتصال'));
-  if(button)button.disabled=false;
- }
+ try{const {error}=await sbClient.rpc('shop_decide_delivery_order',{p_order_id:Number(orderId),p_decision:decision});if(error)throw error;alert(decision==='accept'?'تم قبول طلب التوصيل وسيظهر للمندوبين.':'تم رفض طلب التوصيل.');await refreshMerchantOrders();}
+ catch(e){alert('لم يتم تنفيذ الإجراء: '+(e.message||'خطأ'));if(button)button.disabled=false;}
 }
+
 function startMerchantOrderPolling(){
  if(merchantOrderPollTimer)clearInterval(merchantOrderPollTimer);
  merchantSeenOrderStates=new Map();refreshMerchantOrders();
@@ -748,25 +748,30 @@ function startMerchantOrderPolling(){
 }
 async function refreshCustomerOrders(){
  const box=document.getElementById('customerOrdersStatus');if(!box)return;
- const active=document.querySelector('.screen.active');
- if(document.hidden||(active&&active.id!=='customer'))return;
+ const active=document.querySelector('.screen.active');if(document.hidden||(active&&active.id!=='customer'))return;
  try{
   const z=await sbClient.auth.getSession(),session=z.data&&z.data.session;
   if(z.error)throw z.error;if(!session||!session.user)throw new Error('تعذر التحقق من هوية العميل.');
   const customers=await sbRequest('customers?select=id&auth_user_id=eq.'+encodeURIComponent(session.user.id));
   if(!customers.length){box.textContent='لا توجد طلبات مرتبطة بحساب العميل على هذا الجهاز حتى الآن.';return;}
-  const rows=await sbRequest('orders?select=id,status,created_at,shop_name,delivery_address,rider_code,customer_id&customer_id=eq.'+encodeURIComponent(customers[0].id)+'&order=created_at.desc');
+  const customerId=encodeURIComponent(customers[0].id);
+  const [rows,deliveryRows]=await Promise.all([
+   sbRequest('orders?select=id,status,created_at,shop_name,delivery_address,rider_code,customer_id&customer_id=eq.'+customerId+'&order=created_at.desc'),
+   sbRequest('delivery_orders?select=id,status,created_at,pickup_name,pickup_address,delivery_address,customer_id&customer_id=eq.'+customerId+'&order=created_at.desc')
+  ]);
   const next=new Map();let changed=false;
-  rows.forEach(o=>{const key=String(o.id),state=String(o.status||'جديد');if(customerOrderPollingInitialized&&(!customerOrderStates.has(key)||customerOrderStates.get(key)!==state))changed=true;next.set(key,state);});
-  if(changed)playSafinetNotice('customer');
-  customerOrderStates=next;customerOrderPollingInitialized=true;
-  let events=[];
-  if(rows.length)events=await sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+rows.map(o=>Number(o.id)).join(',')+')&order=created_at.asc');
-  const eventMap={};events.forEach(e=>(eventMap[String(e.order_id)]??=[]).push(e));
-  box.innerHTML=rows.length?'<b>متابعة طلباتك:</b>'+rows.map(o=>{
-   const history=(eventMap[String(o.id)]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
-   return '<div class="record">طلب #'+escapeText(o.id)+' — <b>'+escapeText(o.status||'جديد')+'</b><br>المحل: '+escapeText(o.shop_name||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+(o.rider_code?'<br>كود المندوب: '+escapeText(o.rider_code):'')+(history?'<hr><b>تحديثات الطلب</b>'+history:'')+'</div>';
-  }).join(''):'لا توجد طلبات مرتبطة بحساب العميل على هذا الجهاز حتى الآن.';
+  [...rows.map(o=>({...o,kind:'store'})),...deliveryRows.map(o=>({...o,kind:'delivery'}))].forEach(o=>{const key=o.kind+':'+o.id,state=String(o.status||'جديد');if(customerOrderPollingInitialized&&(!customerOrderStates.has(key)||customerOrderStates.get(key)!==state))changed=true;next.set(key,state);});
+  if(changed)playSafinetNotice('customer');customerOrderStates=next;customerOrderPollingInitialized=true;
+  const [events,deliveryEvents]=await Promise.all([
+   rows.length?sbRequest('order_events?select=order_id,actor_role,actor_name,details,created_at&order_id=in.('+rows.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):Promise.resolve([]),
+   deliveryRows.length?sbRequest('delivery_order_events?select=delivery_order_id,actor_role,actor_name,details,created_at&delivery_order_id=in.('+deliveryRows.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):Promise.resolve([])
+  ]);
+  const map={};events.forEach(e=>(map['store:'+e.order_id]??=[]).push(e));deliveryEvents.forEach(e=>(map['delivery:'+e.delivery_order_id]??=[]).push(e));
+  const render=(o,kind)=>{
+   const history=(map[kind+':'+o.id]||[]).map(e=>'<div class="small">• '+escapeText(e.details||'تحديث')+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
+   return '<div class="record">طلب #'+escapeText(o.id)+' — <b>'+escapeText(o.status||'جديد')+'</b><br>'+(kind==='store'?'المحل: '+escapeText(o.shop_name||'—'):'الاستلام: '+escapeText((o.pickup_name||'')+' — '+(o.pickup_address||'')))+'<br>التسليم: '+escapeText(o.delivery_address||'—')+(o.rider_code?'<br>كود المندوب: '+escapeText(o.rider_code):'')+(history?'<hr><b>تحديثات الطلب</b>'+history:'')+'</div>';
+  };
+  box.innerHTML=(rows.length?'<b>طلبات المنتجات:</b>'+rows.map(o=>render(o,'store')).join(''):'')+(deliveryRows.length?'<b>طلبات التوصيل:</b>'+deliveryRows.map(o=>render(o,'delivery')).join(''):'')||'لا توجد طلبات مرتبطة بحساب العميل على هذا الجهاز حتى الآن.';
  }catch(e){box.textContent='تعذر تحديث حالة الطلبات: '+(e.message||'خطأ في الاتصال');}
 }
 function startCustomerOrderPolling(){
@@ -789,19 +794,20 @@ async function refreshRiderOpenOrders(){
  const box=document.getElementById('riderOpenOrders');if(!box||!riderDashboardRider?.is_available)return;
  try{
   const acceptedStatus=encodeURIComponent('مقبول من المحل');
+  const deliveryFilter=encodeURIComponent('(and(shop_id.is.null,status.in.(new,pending)),and(shop_id.not.is.null,status.eq.accepted))');
   const z=await Promise.all([
    sbRequest('orders?select=id,shop_name,customer_name,customer_phone,delivery_address,order_details,shop_id,status&rider_id=is.null&status=eq.'+acceptedStatus+'&order=created_at.desc'),
-   sbRequest('delivery_orders?select=id,pickup_address,delivery_address,order_details,shop_id&rider_id=is.null&status=in.(new,pending)&order=created_at.desc')
+   sbRequest('delivery_orders?select=id,pickup_name,pickup_address,delivery_address,order_details,shop_id,status&rider_id=is.null&or='+deliveryFilter+'&order=created_at.desc')
   ]);
-  const rows=[...z[0].map(o=>({...o,kind:'orders',pickup:o.shop_name||'المحل'})),...z[1].map(o=>({...o,kind:'delivery_orders',pickup:o.pickup_address||'مكان الاستلام'}))];
+  const rows=[...z[0].map(o=>({...o,kind:'orders',pickup:o.shop_name||'المحل'})),...z[1].map(o=>({...o,kind:'delivery_orders',pickup:(o.pickup_name||'مكان الاستلام')+' — '+(o.pickup_address||'')}))];
   const keys=new Set(rows.map(o=>o.kind+':'+o.id)),fresh=[...keys].filter(k=>!riderSeenOrderKeys.has(k));
   if(riderSeenOrderKeys.size&&fresh.length)playSafinetNotice('rider');riderSeenOrderKeys=keys;
-  if(!rows.length){box.textContent='لا توجد طلبات وافق عليها المحل ومتاحة حاليًا. الطلبات الجديدة لا تظهر للمندوب قبل موافقة المحل.';return;}
+  if(!rows.length){box.textContent='لا توجد طلبات جديدة متاحة حاليًا. طلبات المتاجر تظهر بعد موافقة المحل، وطلبات التوصيل المباشر تظهر فور إرسالها.';return;}
   const ids=[...new Set(rows.map(o=>o.shop_id).filter(Boolean))];let shops={};
   if(ids.length){try{const a=await sbRequest('shops?select=id,latitude,longitude&id=in.('+ids.join(',')+')');shops=Object.fromEntries(a.map(s=>[String(s.id),s]));}catch(e){}}
   rows.forEach(o=>{const s=shops[String(o.shop_id)];o.distance=riderLastPosition&&s&&s.latitude!=null&&s.longitude!=null?riderDistanceKm(riderLastPosition,{lat:Number(s.latitude),lon:Number(s.longitude)}):null;});
   rows.sort((a,b)=>a.distance==null?(b.distance==null?0:1):b.distance==null?-1:a.distance-b.distance);
-  box.innerHTML=rows.map(o=>'<div class="record"><b>طلب '+(o.kind==='orders'?'متجر':'توصيل مباشر')+' #'+escapeText(o.id)+'</b><br>الاستلام: '+escapeText(o.pickup||'—')+'<br>العميل: '+escapeText(o.customer_name||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'<br>التفاصيل: '+escapeText(o.order_details||'—')+'<br><b>'+(o.distance==null?'المسافة غير متاحة':'يبعد عنك '+o.distance.toFixed(2)+' كم')+'</b><br><button class="action" type="button" data-type="'+o.kind+'" data-id="'+Number(o.id)+'" onclick="claimRiderOrder(this.dataset.type,Number(this.dataset.id),this)">قبول الطلب</button></div>').join('');
+  box.innerHTML=rows.map(o=>'<div class="record"><b>طلب '+(o.kind==='orders'?'متجر':'توصيل')+' #'+escapeText(o.id)+'</b><br>الاستلام: '+escapeText(o.pickup||'—')+'<br>العميل: '+escapeText(o.customer_name||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'<br>التفاصيل: '+escapeText(o.order_details||'—')+'<br><b>'+(o.distance==null?'المسافة غير متاحة':'يبعد عنك '+o.distance.toFixed(2)+' كم')+'</b><br><button class="action" type="button" data-type="'+o.kind+'" data-id="'+Number(o.id)+'" onclick="claimRiderOrder(this.dataset.type,Number(this.dataset.id),this)">قبول الطلب</button></div>').join('');
  }catch(e){box.textContent='تعذر تحميل الطلبات الجديدة: '+e.message;}
 }
 async function claimRiderOrder(type,id,button){if(button)button.disabled=true;try{const z=await sbClient.rpc('claim_delivery_order',{p_order_type:type,p_order_id:Number(id)});if(z.error)throw z.error;stopRiderOrderPolling();await loadRiderDashboard();}catch(e){if(button)button.disabled=false;alert('لم يتم قبول الطلب: '+e.message+' ربما حجزه مندوب آخر.');await refreshRiderOpenOrders();}}
