@@ -415,7 +415,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -492,6 +492,11 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">إرسال طلب تسجيل المحل</button>
 <div id="merchantStatus" class="small" aria-live="polite"></div>
 </form>
+<div class="notice" id="merchantOrdersPanel" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right">
+<h2>طلبات المحل</h2><p class="small">تظهر هنا الطلبات الخاصة بمحلك فقط. افتح التطبيق على نفس الهاتف والحساب الذي سجلت منه المحل.</p>
+<div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div>
+<div id="merchantOrders" class="small" aria-live="polite"></div>
+</div>
 </section>
 <section id="admin" class="screen">
 <div id="adminLogin" class="notice">
@@ -569,7 +574,7 @@ if ("serviceWorker" in navigator) {
    if(typeof loadDeliveryPricing==='function')loadDeliveryPricing().catch(function(){});
    if(typeof initDeliveryMap==='function')setTimeout(function(){initDeliveryMap();},250);
   }
-  if(destination==='merchant'&&typeof initMerchantMap==='function')setTimeout(initMerchantMap,180);
+  if(destination==='merchant'){if(typeof initMerchantMap==='function')setTimeout(initMerchantMap,180);if(typeof startMerchantOrderPolling==='function')startMerchantOrderPolling();}
   if(destination==='admin'&&typeof showAdminAccess==='function')showAdminAccess();
  },true);
 })();
@@ -673,6 +678,7 @@ async function ensureCustomerIdentity(){
   }
   if(!session||!session.user)throw new Error('لم يتم إنشاء هوية العميل.');
   show('تم تجهيز حساب العميل تلقائيًا على هذا الجهاز.');
+  startCustomerOrderPolling();
   return true;
  }catch(e){
   show('تعذر تجهيز حساب العميل تلقائيًا: '+(e.message||'تحقق من الاتصال ثم أعد فتح صفحة العميل.'));
@@ -681,6 +687,56 @@ async function ensureCustomerIdentity(){
 }
 
 let riderDashboardRider=null,riderOrderPollTimer=null,riderAvailabilityTimer=null,riderSeenOrderKeys=new Set(),riderLastPosition=null;
+
+async function refreshMerchantOrders(){
+ const status=document.getElementById('merchantOrdersStatus'),box=document.getElementById('merchantOrders');
+ if(!status||!box)return;
+ const active=document.querySelector('.screen.active');
+ if(document.hidden||(active&&active.id!=='merchant'))return;
+ try{
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
+  const z=await sbClient.auth.getSession(),session=z.data&&z.data.session;
+  if(z.error)throw z.error;
+  if(!session||!session.user)throw new Error('افتح حساب المحل من نفس الهاتف الذي سجلت منه.');
+  const shops=await sbRequest('shops?select=id,shop_name,is_active,is_registered&owner_id=eq.'+encodeURIComponent(session.user.id)+'&order=created_at.desc');
+  if(!shops.length){status.textContent='لم أجد محلًا مسجلًا مرتبطًا بهذا الحساب. سجّل المحل من هذا الهاتف أولًا.';box.innerHTML='';return;}
+  const ids=shops.map(x=>Number(x.id)).filter(Number.isFinite);
+  if(!ids.length){status.textContent='تعذر تحديد رقم المحل.';return;}
+  const orders=await sbRequest('orders?select=id,shop_id,status,created_at,customer_name,customer_phone,delivery_address,total_amount,order_details&shop_id=in.('+ids.join(',')+')&order=created_at.desc');
+  let changed=false;const next=new Map();
+  orders.forEach(o=>{const key=String(o.id),state=String(o.status||'جديد');if(merchantSeenOrderStates.size&&(!merchantSeenOrderStates.has(key)||merchantSeenOrderStates.get(key)!==state))changed=true;next.set(key,state);});
+  if(changed)playSafinetNotice();
+  merchantSeenOrderStates=next;
+  status.textContent='تم ربط '+shops.length+' محل بحسابك — الطلبات المعروضة تخص محلاتك فقط.';
+  box.innerHTML=orders.length?orders.map(o=>'<div class="record"><b>طلب #'+escapeText(o.id)+' — '+escapeText(o.status||'جديد')+'</b><br>العميل: '+escapeText(o.customer_name||'—')+'<br>الهاتف: '+escapeText(o.customer_phone||'—')+'<br>عنوان التسليم: '+escapeText(o.delivery_address||'—')+'<br>الإجمالي: '+Number(o.total_amount||0).toFixed(2)+' جنيه<br><small>'+escapeText(o.created_at?new Date(o.created_at).toLocaleString('ar-EG'):'')+'</small></div>').join(''):'لا توجد طلبات مسجلة لمحلك حتى الآن.';
+ }catch(e){status.textContent='تعذر تحميل طلبات المحل: '+(e.message||'خطأ في الاتصال');}
+}
+function startMerchantOrderPolling(){
+ if(merchantOrderPollTimer)clearInterval(merchantOrderPollTimer);
+ merchantSeenOrderStates=new Map();refreshMerchantOrders();
+ merchantOrderPollTimer=setInterval(refreshMerchantOrders,8000);
+}
+async function refreshCustomerOrders(){
+ const box=document.getElementById('customerOrdersStatus');if(!box)return;
+ const active=document.querySelector('.screen.active');
+ if(document.hidden||(active&&active.id!=='customer'))return;
+ try{
+  const z=await sbClient.auth.getSession(),session=z.data&&z.data.session;
+  if(z.error)throw z.error;if(!session||!session.user)throw new Error('تعذر التحقق من هوية العميل.');
+  const rows=await sbRequest('orders?select=id,status,created_at,shop_name,delivery_address&order=created_at.desc');
+  const next=new Map();let changed=false;
+  rows.forEach(o=>{const key=String(o.id),state=String(o.status||'جديد');if(customerOrderPollingInitialized&&(!customerOrderStates.has(key)||customerOrderStates.get(key)!==state))changed=true;next.set(key,state);});
+  if(changed)playSafinetNotice();
+  customerOrderStates=next;customerOrderPollingInitialized=true;
+  box.innerHTML=rows.length?'<b>متابعة طلباتك:</b>'+rows.map(o=>'<div class="record">طلب #'+escapeText(o.id)+' — <b>'+escapeText(o.status||'جديد')+'</b><br>المحل: '+escapeText(o.shop_name||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'</div>').join(''):'لا توجد طلبات مرتبطة بحساب العميل على هذا الجهاز حتى الآن.';
+ }catch(e){box.textContent='تعذر تحديث حالة الطلبات: '+(e.message||'خطأ في الاتصال');}
+}
+function startCustomerOrderPolling(){
+ if(customerOrderPollTimer)clearInterval(customerOrderPollTimer);
+ customerOrderStates=new Map();customerOrderPollingInitialized=false;
+ refreshCustomerOrders();customerOrderPollTimer=setInterval(refreshCustomerOrders,8000);
+}
+
 function riderDistanceKm(a,b){const r=x=>x*Math.PI/180,d1=r(b.lat-a.lat),d2=r(b.lon-a.lon),h=Math.sin(d1/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(d2/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
 async function getRiderSession(){if(!initSupabaseAuth())throw new Error('إعداد الاتصال بقاعدة البيانات غير مكتمل.');const z=await sbClient.auth.getSession();if(z.error)throw z.error;if(!z.data.session)throw new Error('افتح حساب المندوب من نفس الهاتف الذي سجلت منه.');return z.data.session;}
 async function loadRiderDashboard(){const box=document.getElementById('riderDashboardContent');if(!box)return;box.textContent='جارٍ التحقق من حساب المندوب...';try{const s=await getRiderSession(),rows=await sbRequest('riders?select=id,full_name,approval_status,is_available,rider_code,vehicle_type&auth_user_id=eq.'+encodeURIComponent(s.user.id));if(!rows.length){box.textContent='لم يتم العثور على تسجيل مندوب مرتبط بهذا الهاتف. أكمل نموذج التسجيل أعلاه.';return;}riderDashboardRider=rows[0];if(riderDashboardRider.approval_status!=='approved'){stopRiderAvailabilityTracking();box.innerHTML='<div class="record"><b>حسابك قيد مراجعة الإدارة.</b><br>لن تستقبل طلبات إلا بعد اعتماد الحساب.</div>';return;}await renderRiderDashboard();}catch(e){box.textContent='تعذر فتح حساب المندوب: '+e.message;}}
@@ -700,7 +756,7 @@ function renderSafinetScreen(id){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  target.classList.add('active');
  if(id==='customer'){ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
- if(id==='merchant'){setTimeout(initMerchantMap,180);}
+ if(id==='merchant'){setTimeout(initMerchantMap,180);startMerchantOrderPolling();}
  if(id==='driver'){setTimeout(loadRiderDashboard,100);}
  if(id==='admin')showAdminAccess();
  window.scrollTo(0,0);
@@ -1268,6 +1324,7 @@ async function registerShop(event){
   }
   form.reset();previewShopRegistrationImages();clearMerchantLocation();
   box.textContent='تم إرسال طلب المحل وصوره وموقعه على الخريطة وبيانات المنتجات بنجاح. سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+   startMerchantOrderPolling();
  }catch(e){box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';}
 }
 function escapeText(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -1277,6 +1334,8 @@ window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('
 
 let deliveryMap, routeLayer, pickupMarker, dropMarker;
 let merchantMap=null,merchantMapMarker=null,merchantShopCoords=null;
+let merchantOrderPollTimer=null,merchantSeenOrderStates=new Map();
+let customerOrderPollTimer=null,customerOrderStates=new Map(),customerOrderPollingInitialized=false;
 let routeDistanceKm = null;
 let customerCatalog = [];
 let customerSortByDistance = false;
