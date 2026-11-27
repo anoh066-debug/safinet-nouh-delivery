@@ -247,7 +247,7 @@ function playCustomerWelcome(){
  }catch(e){playSafinetChime();}
 }
 function playSafinetNotice(){
- const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}const phrase=new SpeechSynthesisUtterance('سفينة نوح دليفري');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=playSafinetChime;phrase.onerror=playSafinetChime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){playSafinetChime();}}
+ const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}const phrase=new SpeechSynthesisUtterance('سفينة نوح دليفري وصلت');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=playSafinetChime;phrase.onerror=playSafinetChime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){playSafinetChime();}}
  speak();
 }
 function getLocalOrders(){try{return JSON.parse(localStorage.getItem('safinet_orders')||'[]')}catch(e){return []}}
