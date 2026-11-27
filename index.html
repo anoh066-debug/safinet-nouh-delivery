@@ -1635,23 +1635,38 @@ function showSafinetWelcome(){
  img.alt='سفينة نوح دليفري ترحب بكم';
  img.style.cssText='display:block;width:100%;height:100%;object-fit:contain;';
  box.appendChild(img);
+ const speakButton=document.createElement('button');
+ speakButton.type='button';
+ speakButton.textContent='اضغط لسماع رسالة الترحيب';
+ speakButton.setAttribute('aria-label','تشغيل رسالة الترحيب الصوتية');
+ speakButton.style.cssText='position:absolute;bottom:max(28px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:2;border:2px solid #fff;border-radius:28px;padding:14px 24px;background:#ffcf24;color:#073b78;font-size:17px;font-weight:800;box-shadow:0 4px 18px #001d4a88;white-space:nowrap;';
+ box.appendChild(speakButton);
  document.body.appendChild(box);
- let finished=false;
+ let finished=false,started=false;
  const finish=()=>{if(finished)return;finished=true;hideSafinetWelcome();};
- if('speechSynthesis'in window && 'SpeechSynthesisUtterance'in window){
+ const startGreeting=()=>{
+  if(started||finished)return;
+  started=true;
+  speakButton.textContent='أهلًا بكم في سفينة نوح دليفري';
+  speakButton.disabled=true;
   try{
-   window.speechSynthesis.cancel();
+   if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();setTimeout(finish,1800);return;}
    const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح دليفري يرحب بكم');
    greeting.lang='ar-EG';greeting.rate=.9;greeting.pitch=1.05;greeting.volume=1;
-   greeting.onend=finish;
-   greeting.onerror=finish;
+   greeting.onend=()=>{playSafinetChime();setTimeout(finish,900);};
+   greeting.onerror=()=>{playSafinetChime();setTimeout(finish,1800);};
+   window.speechSynthesis.cancel();
    window.speechSynthesis.speak(greeting);
-  }catch(e){finish();}
- }else{
-  finish();
- }
- // منع بقاء شاشة الترحيب معلقة إذا منع المتصفح تشغيل الصوت تلقائيًا.
- setTimeout(()=>{if(!finished){try{if(window.speechSynthesis&&!window.speechSynthesis.speaking)finish();}catch(e){finish();}}},12000);
+   // بعض إصدارات Chrome تتأخر في بدء النطق؛ نعيد المحاولة مرة واحدة إذا بقي الطابور فارغًا.
+   setTimeout(()=>{try{if(!finished&&window.speechSynthesis&&!window.speechSynthesis.speaking&&window.speechSynthesis.pending){window.speechSynthesis.resume();}}catch(e){}},700);
+   setTimeout(()=>{if(!finished){try{if(window.speechSynthesis&&!window.speechSynthesis.speaking){playSafinetChime();finish();}}catch(e){finish();}}},12000);
+  }catch(e){playSafinetChime();setTimeout(finish,1500);}
+ };
+ speakButton.addEventListener('click',startGreeting);
+ // السماح بالضغط على صورة الترحيب نفسها لتشغيل الصوت بعد تفاعل المستخدم.
+ box.addEventListener('click',event=>{if(event.target===box||event.target===img)startGreeting();});
+ // لا نغلق الشاشة تلقائيًا قبل أن تتاح للمستخدم فرصة الضغط لتشغيل الصوت.
+ setTimeout(()=>{if(!started)finish();},15000);
 }
 window.addEventListener('load',()=>{setTimeout(showSafinetWelcome,650);});
 
