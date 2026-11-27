@@ -1299,25 +1299,28 @@ async function renderOrders(){
  try{
   await requireAdminSession();box.textContent='جارٍ تحميل الطلبات...';
   const local=(typeof getLocalOrders==='function'?getLocalOrders():[]);
-  const cloud=await sbRequest('orders?select=*&order=created_at.desc');
+  const [cloud,deliveryOrders]=await Promise.all([
+   sbRequest('orders?select=*&order=created_at.desc'),
+   sbRequest('delivery_orders?select=*&order=created_at.desc')
+  ]);
   const field=(o,...keys)=>{for(const k of keys){const v=o&&o[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v;}return '—';};
-  let events=[],riders=[];
-  if(cloud.length){
-   [events,riders]=await Promise.all([
-    sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+cloud.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'),
-    sbRequest('riders?select=id,full_name,phone,rider_code')
-   ]);
-  }
-  const eventMap={};events.forEach(e=>(eventMap[String(e.order_id)]??=[]).push(e));
+  const [events,deliveryEvents,riders]=await Promise.all([
+   cloud.length?sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+cloud.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):Promise.resolve([]),
+   deliveryOrders.length?sbRequest('delivery_order_events?select=delivery_order_id,event_type,actor_role,actor_name,details,created_at&delivery_order_id=in.('+deliveryOrders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):Promise.resolve([]),
+   sbRequest('riders?select=id,full_name,phone,rider_code')
+  ]);
+  const eventMap={},deliveryEventMap={};events.forEach(e=>(eventMap[String(e.order_id)]??=[]).push(e));deliveryEvents.forEach(e=>(deliveryEventMap[String(e.delivery_order_id)]??=[]).push(e));
   const riderMap=Object.fromEntries(riders.map(r=>[String(r.id),r]));
   const localHtml=local.map(x=>'<div class="record"><b>'+escapeText(field(x,'local_order_no')==='—'?'طلب محلي':field(x,'local_order_no'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>هاتف العميل: '+escapeText(field(x,'customer_phone'))+'<br>المحل: '+escapeText(field(x,'shop_name'))+'<br>الاستلام: '+escapeText(field(x,'pickup_address','shop_address'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: '+escapeText(field(x,'order_status','status','جديد'))+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>').join('');
   const cloudHtml=cloud.map(x=>{
    const rider=riderMap[String(x.rider_id)],history=(eventMap[String(x.id)]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' ('+escapeText(e.actor_role)+') — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
-   return '<div class="record"><b>طلب #'+escapeText(field(x,'id'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>هاتف العميل: '+escapeText(field(x,'customer_phone','contact_phone'))+'<br>المحل: '+escapeText(field(x,'shop_name'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: <b>'+escapeText(field(x,'status','order_status','جديد'))+'</b><br>المندوب: '+escapeText(rider?(rider.full_name+' — '+(rider.rider_code||rider.phone||'')):field(x,'rider_code'))+(history?'<hr><b>سجل حركة الطلب (من قام بالإجراء؟)</b>'+history:'<br><small>لم تُسجل إجراءات إضافية على هذا الطلب بعد.</small>')+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>';
+   return '<div class="record"><b>طلب متجر #'+escapeText(field(x,'id'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>هاتف العميل: '+escapeText(field(x,'customer_phone'))+'<br>المحل: '+escapeText(field(x,'shop_name'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: <b>'+escapeText(field(x,'status','order_status','جديد'))+'</b><br>المندوب: '+escapeText(rider?(rider.full_name+' — '+(rider.rider_code||rider.phone||'')):field(x,'rider_code'))+(history?'<hr><b>سجل حركة الطلب</b>'+history:'<br><small>لم تُسجل إجراءات إضافية على هذا الطلب بعد.</small>')+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>';
   }).join('');
-  let html='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(localHtml||'<p>لا توجد طلبات محلية.</p>');
-  html+='<h3>طلبات قاعدة البيانات ('+cloud.length+')</h3>'+(cloudHtml||'<p>لا توجد طلبات سحابية.</p>');
-  box.innerHTML=html;
+  const deliveryHtml=deliveryOrders.map(x=>{
+   const rider=riderMap[String(x.rider_id)],history=(deliveryEventMap[String(x.id)]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' ('+escapeText(e.actor_role)+') — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
+   return '<div class="record"><b>طلب توصيل #'+escapeText(field(x,'id'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>الهاتف: '+escapeText(field(x,'contact_phone'))+'<br>نقطة الاستلام: '+escapeText(field(x,'pickup_name'))+' — '+escapeText(field(x,'pickup_address'))+'<br>المحل المرتبط: '+escapeText(field(x,'shop_id'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: <b>'+escapeText(field(x,'status'))+'</b><br>المندوب: '+escapeText(rider?(rider.full_name+' — '+(rider.rider_code||rider.phone||'')):'—')+(history?'<hr><b>سجل حركة الطلب</b>'+history:'<br><small>لم تُسجل إجراءات إضافية على هذا الطلب بعد.</small>')+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>';
+  }).join('');
+  box.innerHTML='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(localHtml||'<p>لا توجد طلبات محلية.</p>')+'<h3>طلبات المتجر ('+cloud.length+')</h3>'+(cloudHtml||'<p>لا توجد طلبات متجر.</p>')+'<h3>طلبات التوصيل ('+deliveryOrders.length+')</h3>'+(deliveryHtml||'<p>لا توجد طلبات توصيل.</p>');
  }catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}
 }
 function previewShopRegistrationImages(){
