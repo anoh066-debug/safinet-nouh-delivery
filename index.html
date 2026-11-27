@@ -234,6 +234,18 @@ document.addEventListener('keydown',unlockSafinetAudio,{once:true});
 function playSafinetChime(){
  try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!safinetAudioContext)safinetAudioContext=new AC();const ctx=safinetAudioContext;if(ctx.state==='suspended')ctx.resume();const now=ctx.currentTime;[880,1175,1480].forEach((freq,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain(),start=now+i*.16;osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.16,start+.018);gain.gain.exponentialRampToValueAtTime(.0001,start+.13);osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+.14);});}catch(e){}
 }
+let customerWelcomePlayed=false;
+function playCustomerWelcome(){
+ if(customerWelcomePlayed)return;
+ customerWelcomePlayed=true;
+ try{
+  if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}
+  const greeting=new SpeechSynthesisUtterance('تطبيق سفينة نوح دليفري يرحب بكم');
+  greeting.lang='ar-EG';greeting.rate=.9;greeting.pitch=1.05;greeting.volume=1;
+  greeting.onend=playSafinetChime;greeting.onerror=playSafinetChime;
+  window.speechSynthesis.cancel();window.speechSynthesis.speak(greeting);
+ }catch(e){playSafinetChime();}
+}
 function playSafinetNotice(){
  const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){playSafinetChime();return;}const phrase=new SpeechSynthesisUtterance('سفينة نوح دليفري');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=playSafinetChime;phrase.onerror=playSafinetChime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){playSafinetChime();}}
  speak();
@@ -547,6 +559,7 @@ if ("serviceWorker" in navigator) {
   target.classList.add('active');
   window.scrollTo(0,0);
   if(destination==='customer'&&typeof ensureCustomerIdentity==='function'){
+   if(typeof playCustomerWelcome==='function')playCustomerWelcome();
    ensureCustomerIdentity(); if(typeof loadCustomerCatalog==='function')loadCustomerCatalog();
    if(typeof renderCustomerCart==='function')renderCustomerCart();
    if(typeof loadDeliveryPricing==='function')loadDeliveryPricing().catch(function(){});
@@ -667,7 +680,7 @@ function renderSafinetScreen(id){
  if(!target||!target.classList.contains('screen'))return;
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  target.classList.add('active');
- if(id==='customer'){ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
+ if(id==='customer'){if(typeof playCustomerWelcome==='function')playCustomerWelcome();ensureCustomerIdentity();loadCustomerCatalog();renderCustomerCart();loadDeliveryPricing().catch(()=>{});setTimeout(()=>{initDeliveryMap();if(deliveryMap)deliveryMap.invalidateSize();},250);}
  if(id==='merchant'){setTimeout(initMerchantMap,180);}
  if(id==='admin')showAdminAccess();
  window.scrollTo(0,0);
@@ -1393,24 +1406,28 @@ function toggleVodafoneInfo(){const p=document.getElementById('paymentMethod');c
 async function loadCustomerCatalog(){
  const box=document.getElementById('shopCatalog');if(!box)return;
  box.textContent='جارٍ تحميل المحلات المعتمدة...';
+ const c=getSB();
  const publicRead=async path=>{
-  const c=getSB(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
-  try{
-   const response=await fetch(c.url+'/rest/v1/'+path,{method:'GET',headers:{apikey:c.key,'Authorization':'Bearer '+c.key,'Accept':'application/json'},signal:controller.signal});
-   if(!response.ok){let detail='';try{const data=await response.json();detail=data.message||data.details||data.hint||'';}catch(e){}throw new Error(detail||'تعذر قراءة بيانات المتاجر ('+response.status+').');}
+  const controller=new AbortController();
+  const timeout=new Promise((_,reject)=>setTimeout(()=>{controller.abort();reject(new Error('انتهت مهلة الاتصال بقاعدة البيانات بعد 12 ثانية. اضغط إعادة المحاولة.'));},12000));
+  const request=(async()=>{
+   const response=await fetch(c.url+'/rest/v1/'+path,{method:'GET',headers:{apikey:c.key,'Authorization':'Bearer '+c.key,'Accept':'application/json'},signal:controller.signal,cache:'no-store'});
+   if(!response.ok){let detail='';try{const data=await response.json();detail=data.message||data.details||data.hint||'';}catch(e){}throw new Error(detail||'تعذر قراءة البيانات ('+response.status+').');}
    return await response.json();
-  }catch(e){if(e.name==='AbortError')throw new Error('الاتصال بقاعدة البيانات استغرق وقتًا طويلًا. اضغط رجوع ثم افتح صفحة العميل مرة أخرى.');throw e;}
-  finally{clearTimeout(timer);}
+  })();
+  return await Promise.race([request,timeout]);
  };
  try{
-  const shops=await publicRead('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc');
-  customerCatalog=await Promise.all(shops.map(async shop=>{
-   const products=await publicRead('products?select=id,name,price,description,image_path&shop_id=eq.'+encodeURIComponent(shop.id)+'&is_available=eq.true&order=name.asc');
-   return {...shop,products};
-  }));
+  const [shops,products]=await Promise.all([
+   publicRead('shops?select=id,name:shop_name,address,activity_type,latitude,longitude,created_at&is_active=eq.true&order=created_at.desc'),
+   publicRead('products?select=id,shop_id,name,price,description,image_path&is_available=eq.true&order=name.asc')
+  ]);
+  customerCatalog=shops.map(shop=>({...shop,products:products.filter(product=>String(product.shop_id)===String(shop.id))}));
   if(!customerCatalog.length){box.innerHTML='<p>لا توجد محلات معتمدة متاحة حاليًا. تابعنا، وسيظهر المحل هنا فور اعتماده.</p>';return;}
   renderCustomerCatalog();
- }catch(e){box.innerHTML='<p>تعذر تحميل قائمة المحلات من قاعدة البيانات.</p><p class="small">رسالة النظام: '+escapeText(e.message||'تعذر الاتصال')+'</p>';}
+ }catch(e){
+  box.innerHTML='<p>تعذر تحميل قائمة المحلات.</p><p class="small">السبب: '+escapeText(e.message||'تعذر الاتصال')+'</p><button type="button" class="action secondary" onclick="loadCustomerCatalog()">إعادة تحميل المحلات</button>';
+ }
 }
 const CUSTOMER_CATEGORIES=[
  {key:'market',icon:'🛒',name:'سوبر ماركت وبقالة',hint:'احتياجات البيت اليومية'},
