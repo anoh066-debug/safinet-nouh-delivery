@@ -1323,6 +1323,21 @@ async function renderAdmin(){
   html+='<h3>المندوبون الموقوفون ('+inactiveRiders.length+')</h3>'+
    (inactiveRiders.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br><button class="action" type="button" onclick="setAdminAccountActive(\'rider\','+JSON.stringify(x.id)+',true)">إعادة تفعيل المندوب</button></div>').join('')||'<p>لا يوجد مندوبون موقوفون.</p>');
   box.innerHTML=html;
+  /* ربط أزرار الحسابات بعد إنشاء عناصرها، دون الاعتماد على onclick داخل HTML */
+  const bindAccountButtons=(label,items,kind,active)=>{
+   const buttons=Array.from(box.querySelectorAll('button')).filter(b=>b.textContent.trim()===label);
+   buttons.forEach((button,index)=>{
+    const item=items[index];if(!item)return;
+    button.addEventListener('click',function(event){
+     event.preventDefault();event.stopPropagation();
+     setAdminAccountActive(kind,item.id,active);
+    });
+   });
+  };
+  bindAccountButtons('إيقاف وإخفاء العميل',activeCustomers,'customer',false);
+  bindAccountButtons('إعادة تفعيل العميل',inactiveCustomers,'customer',true);
+  bindAccountButtons('إيقاف وإخفاء المندوب',activeRiders,'rider',false);
+  bindAccountButtons('إعادة تفعيل المندوب',inactiveRiders,'rider',true);
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
 async function editShop(id){
