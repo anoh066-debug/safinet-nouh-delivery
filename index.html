@@ -784,7 +784,6 @@ async function refreshMerchantOrders(){
   const deliveryEvents=deliveryOrders.length?await sbRequest('delivery_order_events?select=delivery_order_id,event_type,actor_role,actor_name,details,created_at&delivery_order_id=in.('+deliveryOrders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):[];
   const eventMap={};storeEvents.forEach(e=>(eventMap['store:'+e.order_id]??=[]).push(e));deliveryEvents.forEach(e=>(eventMap['delivery:'+e.delivery_order_id]??=[]).push(e));
   status.textContent='تم ربط '+shops.length+' محل بحسابك — الطلبات المعروضة تخص محلاتك فقط.';
-  status.innerHTML+=' <button class="action secondary" type="button" onclick="testSafinetNotice(\'merchant\')">اختبار صوت الإشعار</button>';
   const card=(o,kind)=>{
    const key=kind+':'+o.id,pending=kind==='store'?['جديد','new','pending'].includes(String(o.status||'').toLowerCase()):['new','pending'].includes(String(o.status||'').toLowerCase());
    const history=(eventMap[key]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
