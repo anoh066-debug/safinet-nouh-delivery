@@ -257,9 +257,8 @@ function playSafinetRoleChime(role){
  }catch(e){playSafinetChime();}
 }
 function playSafinetNotice(role='default'){
- const chime=()=>playSafinetRoleChime(role);
- const speak=()=>{try{if(!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window)){chime();return;}const phrase=new SpeechSynthesisUtterance('سفينة نوح دليفري وصلت');phrase.lang='ar-EG';phrase.rate=.9;phrase.pitch=1.08;phrase.volume=1;phrase.onend=chime;phrase.onerror=chime;window.speechSynthesis.cancel();window.speechSynthesis.speak(phrase);}catch(e){chime();}}
- speak();
+ // تنبيه صوتي فوري ومميز لكل دور؛ يعمل بعد أول لمسة من المستخدم للسماح بالصوت في Chrome.
+ playSafinetRoleChime(role);
 }
 function getLocalOrders(){try{return JSON.parse(localStorage.getItem('safinet_orders')||'[]')}catch(e){return []}}
 function setLocalOrders(rows){localStorage.setItem('safinet_orders',JSON.stringify(rows))}
@@ -700,7 +699,7 @@ async function ensureCustomerIdentity(){
  }
 }
 
-let riderDashboardRider=null,riderOrderPollTimer=null,riderAvailabilityTimer=null,riderSeenOrderKeys=new Set(),riderLastPosition=null;
+let riderDashboardRider=null,riderOrderPollTimer=null,riderAvailabilityTimer=null,riderSeenOrderKeys=new Set(),riderOrderPollingInitialized=false,riderLastPosition=null;
 
 async function refreshMerchantOrders(){
  const status=document.getElementById('merchantOrdersStatus'),box=document.getElementById('merchantOrders');
@@ -719,8 +718,8 @@ async function refreshMerchantOrders(){
    sbRequest('delivery_orders?select=id,shop_id,status,created_at,customer_name,contact_phone,pickup_name,pickup_address,delivery_address,order_details,rider_id&shop_id=in.('+ids.join(',')+')&order=created_at.desc')
   ]);
   let changed=false;const next=new Map();
-  [...orders.map(o=>({...o,kind:'store'})),...deliveryOrders.map(o=>({...o,kind:'delivery'}))].forEach(o=>{const key=o.kind+':'+o.id,state=String(o.status||'جديد');if(merchantSeenOrderStates.size&&(!merchantSeenOrderStates.has(key)||merchantSeenOrderStates.get(key)!==state))changed=true;next.set(key,state);});
-  if(changed)playSafinetNotice('merchant');merchantSeenOrderStates=next;
+  [...orders.map(o=>({...o,kind:'store'})),...deliveryOrders.map(o=>({...o,kind:'delivery'}))].forEach(o=>{const key=o.kind+':'+o.id,state=String(o.status||'جديد');if(merchantOrderPollingInitialized&&(!merchantSeenOrderStates.has(key)||merchantSeenOrderStates.get(key)!==state))changed=true;next.set(key,state);});
+  if(changed)playSafinetNotice('merchant');merchantSeenOrderStates=next;merchantOrderPollingInitialized=true;
   const storeEvents=orders.length?await sbRequest('order_events?select=order_id,event_type,actor_role,actor_name,details,created_at&order_id=in.('+orders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):[];
   const deliveryEvents=deliveryOrders.length?await sbRequest('delivery_order_events?select=delivery_order_id,event_type,actor_role,actor_name,details,created_at&delivery_order_id=in.('+deliveryOrders.map(o=>Number(o.id)).join(',')+')&order=created_at.asc'):[];
   const eventMap={};storeEvents.forEach(e=>(eventMap['store:'+e.order_id]??=[]).push(e));deliveryEvents.forEach(e=>(eventMap['delivery:'+e.delivery_order_id]??=[]).push(e));
@@ -761,7 +760,7 @@ async function decideShopDeliveryOrder(orderId,decision,button){
 
 function startMerchantOrderPolling(){
  if(merchantOrderPollTimer)clearInterval(merchantOrderPollTimer);
- merchantSeenOrderStates=new Map();refreshMerchantOrders();
+ merchantSeenOrderStates=new Map();merchantOrderPollingInitialized=false;refreshMerchantOrders();
  merchantOrderPollTimer=setInterval(refreshMerchantOrders,8000);
 }
 async function refreshCustomerOrders(){
@@ -806,7 +805,7 @@ async function changeRiderAvailability(on){const t=document.getElementById('ride
 async function sendRiderAvailableLocation(id){const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,e=>no(new Error(e.code===1?'اسمح للتطبيق باستخدام الموقع.':'شغّل GPS وحاول مرة أخرى.')),{enableHighAccuracy:true,timeout:12000,maximumAge:5000}));riderLastPosition={lat:p.coords.latitude,lon:p.coords.longitude};const s=await getRiderSession(),c=getSB(),res=await fetch(c.url+'/rest/v1/rider_locations?on_conflict=rider_id',{method:'POST',headers:{apikey:c.key,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({rider_id:id,order_id:null,latitude:riderLastPosition.lat,longitude:riderLastPosition.lon,accuracy_m:p.coords.accuracy,updated_at:new Date().toISOString()})});if(!res.ok){let j={};try{j=await res.json();}catch(e){}throw new Error(j.message||'تعذر حفظ الموقع.');}}
 function startRiderAvailabilityTracking(id){stopRiderAvailabilityTracking();riderAvailabilityTimer=setInterval(()=>{if(!document.hidden&&riderDashboardRider?.is_available)sendRiderAvailableLocation(id).catch(e=>{const s=document.getElementById('riderAvailabilityStatus');if(s)s.textContent='تعذر تحديث الموقع: '+e.message;});},15000);}
 function stopRiderAvailabilityTracking(){if(riderAvailabilityTimer)clearInterval(riderAvailabilityTimer);riderAvailabilityTimer=null;}
-function startRiderOrderPolling(){stopRiderOrderPolling();riderOrderPollTimer=setInterval(()=>{if(!document.hidden&&riderDashboardRider?.is_available)refreshRiderOpenOrders();},8000);}
+function startRiderOrderPolling(){stopRiderOrderPolling();riderSeenOrderKeys=new Set();riderOrderPollingInitialized=false;refreshRiderOpenOrders();riderOrderPollTimer=setInterval(()=>{if(!document.hidden&&riderDashboardRider?.is_available)refreshRiderOpenOrders();},8000);}
 function stopRiderOrderPolling(){if(riderOrderPollTimer)clearInterval(riderOrderPollTimer);riderOrderPollTimer=null;}
 async function refreshRiderOpenOrders(){
  const box=document.getElementById('riderOpenOrders');if(!box||!riderDashboardRider?.is_available)return;
@@ -819,7 +818,7 @@ async function refreshRiderOpenOrders(){
   ]);
   const rows=[...z[0].map(o=>({...o,kind:'orders',pickup:o.shop_name||'المحل'})),...z[1].map(o=>({...o,kind:'delivery_orders',pickup:(o.pickup_name||'مكان الاستلام')+' — '+(o.pickup_address||'')}))];
   const keys=new Set(rows.map(o=>o.kind+':'+o.id)),fresh=[...keys].filter(k=>!riderSeenOrderKeys.has(k));
-  if(riderSeenOrderKeys.size&&fresh.length)playSafinetNotice('rider');riderSeenOrderKeys=keys;
+  if(riderOrderPollingInitialized&&fresh.length)playSafinetNotice('rider');riderSeenOrderKeys=keys;riderOrderPollingInitialized=true;
   if(!rows.length){box.textContent='لا توجد طلبات جديدة متاحة حاليًا. طلبات المتاجر تظهر بعد موافقة المحل، وطلبات التوصيل المباشر تظهر فور إرسالها.';return;}
   const ids=[...new Set(rows.map(o=>o.shop_id).filter(Boolean))];let shops={};
   if(ids.length){try{const a=await sbRequest('shops?select=id,latitude,longitude&id=in.('+ids.join(',')+')');shops=Object.fromEntries(a.map(s=>[String(s.id),s]));}catch(e){}}
@@ -1469,7 +1468,7 @@ window.addEventListener('load',()=>{const c=getSB();if(document.getElementById('
 
 let deliveryMap, routeLayer, pickupMarker, dropMarker;
 let merchantMap=null,merchantMapMarker=null,merchantShopCoords=null;
-let merchantOrderPollTimer=null,merchantSeenOrderStates=new Map();
+let merchantOrderPollTimer=null,merchantSeenOrderStates=new Map(),merchantOrderPollingInitialized=false;
 let customerOrderPollTimer=null,customerOrderStates=new Map(),customerOrderPollingInitialized=false;
 let routeDistanceKm = null;
 let customerCatalog = [];
