@@ -464,7 +464,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" onclick="chatReturnScreen='customer';go('chat')">💬 الدردشة والمجتمع</button><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='customer';go('chat')">💬 الدردشة والمجتمع</button><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -519,7 +519,7 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
-<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div><button class="action secondary" type="button" onclick="chatReturnScreen='driver';go('chat')">💬 الدردشة والمجتمع</button></div>
+<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='driver';go('chat')">💬 الدردشة والمجتمع</button></div>
 <div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب. اترك التطبيق مفتوحًا؛ قد يتوقف تحديث الموقع إذا أُغلق التطبيق أو عمل الهاتف على توفير الطاقة.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
 </section>
 <section id="merchant" class="screen">
@@ -544,11 +544,11 @@ if ("serviceWorker" in navigator) {
 <div class="notice" id="merchantOrdersPanel" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right">
 <h2>طلبات المحل</h2><p class="small">تظهر هنا الطلبات الخاصة بمحلك فقط. افتح التطبيق على نفس الهاتف والحساب الذي سجلت منه المحل.</p>
 <div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div><button class="action secondary" type="button" onclick="enableSafinetPush('merchant')">تفعيل إشعارات الطلبات على الهاتف</button><div id="merchantPushStatus" class="small" aria-live="polite"></div>
-<div id="merchantOrders" class="small" aria-live="polite"></div><button class="action secondary" type="button" onclick="chatReturnScreen='merchant';go('chat')">💬 الدردشة والمجتمع</button>
+<div id="merchantOrders" class="small" aria-live="polite"></div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='merchant';go('chat')">💬 الدردشة والمجتمع</button>
 </div>
 </section>
 
-<section id="chat" class="screen">
+<section id="chat" class="screen" style="display:none">
  <button class="back" type="button" onclick="closeSafinetChat()">رجوع</button>
  <div class="notice" style="padding:58px 14px 14px">
   <h2>💬 الدردشة والمجتمع</h2>
@@ -601,7 +601,7 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegistrations',renderAdmin)">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegisteredShops',renderRegisteredShops)">المحلات المسجلة</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminOrders',renderOrders)">عرض الطلبات</button>
-<button class="action secondary" type="button" onclick="chatReturnScreen='admin';go('chat')">💬 إدارة الدردشة والمجتمع</button>
+<button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='admin';go('chat')">💬 إدارة الدردشة والمجتمع</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRiderTracking',renderAdminRiderTracking)">تتبع المناديب على الخريطة</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRiderLedger',renderRiderLedger)">متابعة المندوبين وكشف الحساب وجرد الطلبات</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminShopVisits',renderShopVisits)">قائمة زيارات المحلات</button>
