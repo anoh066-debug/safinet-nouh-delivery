@@ -910,8 +910,16 @@ async function openSafinetChat(){
  try{
   if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
   let session=null;
-  if(adminSession&&adminSession.user&&adminSession.user.app_metadata&&adminSession.user.app_metadata.role==='admin'){session=adminSession;chatIsAdmin=true;chatClient=adminClient;}
-  else {const z=await sbClient.auth.getSession();if(z.error)throw z.error;session=z.data.session;chatIsAdmin=false;chatClient=sbClient;}
+  // اختيار نوع الدردشة حسب الزر الذي فتحها، وليس حسب وجود جلسة إدارة قديمة محفوظة.
+  if(chatReturnScreen==='admin'){
+   const ok=await verifyAdminSession();
+   if(!ok)throw new Error('سجّل دخول الإدارة أولاً لفتح إدارة الدردشة.');
+   const z=await adminClient.auth.getSession();if(z.error)throw z.error;
+   session=z.data.session;chatIsAdmin=true;chatClient=adminClient;
+  }else{
+   const z=await sbClient.auth.getSession();if(z.error)throw z.error;
+   session=z.data.session;chatIsAdmin=false;chatClient=sbClient;
+  }
   if(!session||!session.user)throw new Error('سجّل الدخول من حسابك أولاً حتى تتمكن من استخدام الدردشة.');
   chatCurrentUserId=session.user.id;
   const rooms=await safinetChatRequest('chat_rooms?select=id,room_type,title,is_active,order_source,order_id,created_at&order=created_at.desc');
