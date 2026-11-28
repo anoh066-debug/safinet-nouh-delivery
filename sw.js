@@ -1,4 +1,4 @@
-const CACHE_NAME = "safinet-shell-v15";
+const CACHE_NAME = "safinet-shell-v16";
 const APP_SHELL = ["/", "/manifest.json", "/icon.svg", "/safinet-noah-icon(1).png?v=6", "/home-screen.jpg.jpg", ];
 
 self.addEventListener("install", event => {
@@ -64,6 +64,8 @@ self.addEventListener("push", event => {
       badge: "/icon.svg",
       tag: data.tag || "safinet-notification",
       renotify: true,
+      silent: false,
+      vibrate: [250, 120, 250, 120, 450],
       data: { url: data.url || "/" }
     });
   })());
