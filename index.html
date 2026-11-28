@@ -750,7 +750,8 @@ async function ensureCustomerIdentity(){
    session=result.data.session;
   }
   if(!session||!session.user)throw new Error('لم يتم إنشاء هوية العميل.');
-  show('تم تجهيز حساب العميل تلقائيًا على هذا الجهاز.');
+  const customerRows=await sbRequest('customers?select=customer_code&auth_user_id=eq.'+encodeURIComponent(session.user.id));
+  show(customerRows.length&&customerRows[0].customer_code?'تم تجهيز حساب العميل تلقائيًا على هذا الجهاز. كود العميل: '+customerRows[0].customer_code:'تم تجهيز حساب العميل تلقائيًا على هذا الجهاز.');
   startCustomerOrderPolling();
   return true;
  }catch(e){
@@ -1294,7 +1295,7 @@ function filterAdminShops(value){
  if(!box)return;
  const q=String(value||'').trim().toLocaleLowerCase();
  const rows=adminShopRecords.filter(x=>[x.shop_name,x.phone,x.activity_type,x.address].some(v=>String(v||'').toLocaleLowerCase().includes(q)));
- box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'موقوف ومخفي — مسجل':'غير معتمد'))+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">'+(x.is_active?'<button class="action secondary" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء المحل</button>':'<button class="action" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',true)">إعادة تفعيل المحل</button>')+'<button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
+ box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>كود المحل: '+escapeText(x.shop_code||'—')+'<br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'موقوف ومخفي — مسجل':'غير معتمد'))+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">'+(x.is_active?'<button class="action secondary" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء المحل</button>':'<button class="action" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',true)">إعادة تفعيل المحل</button>')+'<button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
 }
 async function renderRegisteredShops(){
  const box=document.getElementById('registeredShopsContent');
@@ -1302,7 +1303,7 @@ async function renderRegisteredShops(){
  box.textContent='جارٍ تحميل المحلات المسجلة...';
  try{
   await requireAdminSession();
-  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&is_registered=eq.true&order=shop_name.asc');
+  const shops=await sbRequest('shops?select=id,shop_code,shop_name,phone,activity_type,address,is_active,is_registered&is_registered=eq.true&order=shop_name.asc');
   adminShopRecords=shops||[];
   box.innerHTML='<label for="adminShopSearch">ابحث باسم المحل أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList" style="margin-top:10px"></div>';
   filterAdminShops('');
@@ -1348,9 +1349,9 @@ async function renderAdmin(){
   const activeCustomers=(cs||[]).filter(x=>x.is_active!==false),inactiveCustomers=(cs||[]).filter(x=>x.is_active===false);
   const activeRiders=(ds||[]).filter(x=>x.is_active!==false),inactiveRiders=(ds||[]).filter(x=>x.is_active===false);
   let html='<h3>العملاء النشطون ('+activeCustomers.length+')</h3>'+
-   (activeCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'<br><button class="action secondary" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء العميل</button></div>').join('')||'<p>لا يوجد عملاء نشطون.</p>');
+   (activeCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>كود العميل: '+escapeText(x.customer_code||'—')+'<br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'<br><button class="action secondary" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء العميل</button></div>').join('')||'<p>لا يوجد عملاء نشطون.</p>');
   html+='<h3>العملاء الموقوفون ('+inactiveCustomers.length+')</h3>'+
-   (inactiveCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br><button class="action" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',true)">إعادة تفعيل العميل</button></div>').join('')||'<p>لا يوجد عملاء موقوفون.</p>');
+   (inactiveCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>كود العميل: '+escapeText(x.customer_code||'—')+'<br>الهاتف: '+escapeText(x.phone)+'<br><button class="action" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',true)">إعادة تفعيل العميل</button></div>').join('')||'<p>لا يوجد عملاء موقوفون.</p>');
   html+='<h3>المندوبون النشطون ('+activeRiders.length+')</h3>'+
    (activeRiders.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+(x.approval_status==='pending'?'<br><button class="action" type="button" onclick="approveRider(\''+escapeText(x.id)+'\')">اعتماد المندوب</button>':'')+'<br><button class="action secondary" type="button" onclick="setAdminAccountActive(\'rider\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء المندوب</button></div>').join('')||'<p>لا يوجد مندوبون نشطون.</p>');
   html+='<h3>المندوبون الموقوفون ('+inactiveRiders.length+')</h3>'+
@@ -1819,7 +1820,8 @@ async function registerShop(event){
    throw new Error('تعذر حفظ صور أو بيانات المنتجات: '+(imageError.message||'خطأ غير معروف')+'. راجع البيانات وحاول مرة أخرى.');
   }
   form.reset();previewShopRegistrationImages();clearMerchantLocation();
-  box.textContent='تم إرسال طلب المحل وصوره وموقعه على الخريطة وبيانات المنتجات بنجاح. سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
+  let shopCode='';try{const codeRows=await sbRequest('shops?select=shop_code&id=eq.'+encodeURIComponent(shopId));shopCode=codeRows[0]?.shop_code||'';}catch(e){}
+  box.textContent='تم إرسال طلب المحل وصوره وموقعه على الخريطة وبيانات المنتجات بنجاح. '+(shopCode?'كود المحل: '+shopCode+'. ':'')+'سيظل المحل غير ظاهر للعملاء حتى اعتماد الإدارة.';
    startMerchantOrderPolling();
  }catch(e){box.textContent='لم يكتمل إرسال الطلب: '+(e.message||'تعذر الاتصال')+'. لم يتم اعتماد المحل.';}
 }
