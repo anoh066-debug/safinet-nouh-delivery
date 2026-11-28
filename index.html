@@ -892,6 +892,17 @@ async function claimRiderOrder(type,id,button){if(button)button.disabled=true;tr
 
 
 let chatReturnScreen='home',chatCurrentUserId=null,chatIsAdmin=false,chatCurrentRoom=null,chatRoomsCache=[],chatClient=null,chatRealtimeChannel=null;
+async function safinetChatRequest(path,method='GET',body=null){
+ if(!chatClient)throw new Error('جلسة الدردشة غير مهيأة. سجّل الدخول مرة أخرى.');
+ const auth=await chatClient.auth.getSession();
+ if(auth.error)throw auth.error;
+ const token=auth.data&&auth.data.session&&auth.data.session.access_token;
+ if(!token)throw new Error('انتهت جلسة الحساب. سجّل الدخول مرة أخرى.');
+ const cfg=getSB();
+ const response=await fetch(cfg.url+'/rest/v1/'+path,{method,headers:{apikey:cfg.key,Authorization:'Bearer '+token,'Content-Type':'application/json',Prefer:'return=representation'},body:body?JSON.stringify(body):undefined});
+ if(!response.ok){let message='';try{message=(await response.json()).message||''}catch(e){}throw new Error(message||'تعذر تنفيذ طلب الدردشة بسبب الصلاحيات.');}
+ return response.status===204?[]:await response.json();
+}
 function closeSafinetChat(){const back=chatReturnScreen&&chatReturnScreen!=='chat'?chatReturnScreen:'home';go(back);}
 async function openSafinetChat(){
  const status=document.getElementById('safinetChatStatus'),roomsBox=document.getElementById('safinetChatRooms');
@@ -903,7 +914,7 @@ async function openSafinetChat(){
   else {const z=await sbClient.auth.getSession();if(z.error)throw z.error;session=z.data.session;chatIsAdmin=false;chatClient=sbClient;}
   if(!session||!session.user)throw new Error('سجّل الدخول من حسابك أولاً حتى تتمكن من استخدام الدردشة.');
   chatCurrentUserId=session.user.id;
-  const rooms=await sbRequest('chat_rooms?select=id,room_type,title,is_active,order_source,order_id,created_at&order=created_at.desc');
+  const rooms=await safinetChatRequest('chat_rooms?select=id,room_type,title,is_active,order_source,order_id,created_at&order=created_at.desc');
   chatRoomsCache=rooms||[];
   const rank=r=>r.room_type==='order'?0:r.room_type==='announcements'?1:r.room_type==='riders'?2:r.room_type==='shops'?3:4;
   chatRoomsCache.sort((a,b)=>rank(a)-rank(b)||Number(b.id)-Number(a.id));
@@ -942,7 +953,7 @@ async function openSafinetChatRoom(roomId){
 async function loadSafinetChatMessages(roomId){
  const box=document.getElementById('safinetChatMessages');if(!box)return;
  try{
-  const rows=await sbRequest('chat_messages?select=id,room_id,sender_user_id,sender_role,body,created_at&room_id=eq.'+Number(roomId)+'&order=created_at.asc&limit=150');
+  const rows=await safinetChatRequest('chat_messages?select=id,room_id,sender_user_id,sender_role,body,created_at&room_id=eq.'+Number(roomId)+'&order=created_at.asc&limit=150');
   if(!rows.length){box.innerHTML='<div class="chat-empty">لا توجد رسائل حتى الآن. ابدأ المحادثة برسالة ترحيب.</div>';return;}
   const roleName={customer:'عميل',rider:'مندوب',merchant:'صاحب محل',admin:'إدارة سفينة نوح'};
   box.innerHTML=rows.map(m=>{
@@ -961,14 +972,14 @@ async function sendSafinetChatMessage(event){
  const body=input.value.trim();if(body.length>2000)return;
  if(send)send.disabled=true;
  try{
-  await sbRequest('chat_messages','POST',{room_id:Number(chatCurrentRoom.id),sender_user_id:chatCurrentUserId,sender_role:chatIsAdmin?'admin':'customer',body});
+  await safinetChatRequest('chat_messages','POST',{room_id:Number(chatCurrentRoom.id),body});
   input.value='';await loadSafinetChatMessages(chatCurrentRoom.id);
  }catch(e){const hint=document.getElementById('safinetChatComposeHint');if(hint)hint.textContent='تعذر إرسال الرسالة: '+(e.message||'تحقق من صلاحية الحساب.');}
  finally{if(send)send.disabled=!chatCurrentRoom||!chatCurrentRoom.is_active;}
 }
 async function deleteSafinetChatMessage(messageId){
  if(!chatIsAdmin||!confirm('هل تريد حذف هذه الرسالة؟'))return;
- try{await sbRequest('chat_messages?id=eq.'+Number(messageId),'DELETE');if(chatCurrentRoom)await loadSafinetChatMessages(chatCurrentRoom.id);}
+ try{await safinetChatRequest('chat_messages?id=eq.'+Number(messageId),'DELETE');if(chatCurrentRoom)await loadSafinetChatMessages(chatCurrentRoom.id);}
  catch(e){alert('تعذر حذف الرسالة: '+(e.message||'خطأ في الصلاحيات.'));}
 }
 
