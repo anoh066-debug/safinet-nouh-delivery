@@ -27,6 +27,7 @@
 #home .home-footer a{color:#075eb5;text-decoration:none;font-weight:700}
 .hit{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .back{position:absolute;top:12px;right:12px;background:#073b91;color:white;border:0;border-radius:22px;padding:10px 16px;font-size:15px;z-index:3}
+#safinetPushToggle{position:fixed;top:9px;left:9px;z-index:99990;border:1px solid #ffffff80;border-radius:20px;padding:7px 12px;background:#073b91;color:#fff;font:700 12px Tahoma,Arial,sans-serif;box-shadow:0 2px 9px #001b4380;cursor:pointer;min-height:34px}#safinetPushToggle.enabled{background:#087a45}#safinetPushToggle:disabled{opacity:.7;cursor:wait}
 .notice{padding:18px;text-align:center;background:#fff}
 h2{margin:8px 0;color:#073b91}p{line-height:1.8}
 .form{padding:20px;display:grid;gap:12px}
@@ -429,6 +430,7 @@ if ("serviceWorker" in navigator) {
 </head>
 <body>
 <main class="app">
+<button id="safinetPushToggle" type="button" onclick="toggleSafinetPush()">تفعيل الإشعار</button>
 <section id="home" class="screen active">
 <div class="home-poster">
 <img src="/home-screen.jpg.jpg" alt="واجهة سفينة نوح دليفري - العميل والمندوب وأصحاب المحلات">
@@ -464,7 +466,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='customer';go('chat')">💬 الدردشة والمجتمع</button><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='customer';go('chat')">💬 الدردشة والمجتمع</button><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -519,7 +521,7 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
-<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='driver';go('chat')">💬 الدردشة والمجتمع</button></div>
+<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='driver';go('chat')">💬 الدردشة والمجتمع</button></div>
 <div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب. اترك التطبيق مفتوحًا؛ قد يتوقف تحديث الموقع إذا أُغلق التطبيق أو عمل الهاتف على توفير الطاقة.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
 </section>
 <section id="merchant" class="screen">
@@ -543,7 +545,7 @@ if ("serviceWorker" in navigator) {
 </form>
 <div class="notice" id="merchantOrdersPanel" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right">
 <h2>طلبات المحل</h2><p class="small">تظهر هنا الطلبات الخاصة بمحلك فقط. افتح التطبيق على نفس الهاتف والحساب الذي سجلت منه المحل.</p>
-<div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div><button class="action secondary" type="button" onclick="enableSafinetPush('merchant')">تفعيل إشعارات الطلبات على الهاتف</button><div id="merchantPushStatus" class="small" aria-live="polite"></div>
+<div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div>
 <div id="merchantOrders" class="small" aria-live="polite"></div><button class="action secondary" type="button" style="display:none" onclick="chatReturnScreen='merchant';go('chat')">💬 الدردشة والمجتمع</button>
 </div>
 </section>
@@ -596,7 +598,7 @@ if ("serviceWorker" in navigator) {
 <div id="adminWorkspace" style="display:none">
 <div id="adminHome" class="notice">
 <button class="back" onclick="go('home')">رجوع</button>
-<button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><button class="action" type="button" onclick="setupSafinetPush()">تهيئة إشعارات الهاتف للتطبيق</button><div id="adminPushSetupStatus" class="small" aria-live="polite"></div>
+<button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button>
 <h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>اختر القسم الذي تريد إدارته:</p>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegistrations',renderAdmin)">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegisteredShops',renderRegisteredShops)">المحلات المسجلة</button>
@@ -861,7 +863,7 @@ function startCustomerOrderPolling(){
 function riderDistanceKm(a,b){const r=x=>x*Math.PI/180,d1=r(b.lat-a.lat),d2=r(b.lon-a.lon),h=Math.sin(d1/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(d2/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
 async function getRiderSession(){if(!initSupabaseAuth())throw new Error('إعداد الاتصال بقاعدة البيانات غير مكتمل.');const z=await sbClient.auth.getSession();if(z.error)throw z.error;if(!z.data.session)throw new Error('افتح حساب المندوب من نفس الهاتف الذي سجلت منه.');return z.data.session;}
 async function loadRiderDashboard(){const box=document.getElementById('riderDashboardContent'),form=document.getElementById('driverForm');if(!box)return;if(form)form.style.display='none';box.textContent='جارٍ التحقق من حساب المندوب...';try{const s=await getRiderSession(),rows=await sbRequest('riders?select=id,full_name,approval_status,is_available,rider_code,vehicle_type&auth_user_id=eq.'+encodeURIComponent(s.user.id));if(!rows.length){riderDashboardRider=null;if(form)form.style.display='block';box.textContent='لا يوجد حساب مندوب مرتبط بهذه الجلسة. يمكنك التسجيل من النموذج أعلاه.';return;}riderDashboardRider=rows[0];if(riderDashboardRider.approval_status!=='approved'){if(form)form.style.display='none';stopRiderAvailabilityTracking();box.innerHTML='<div class="record"><b>حسابك قيد مراجعة الإدارة.</b><br>لن تستقبل طلبات إلا بعد اعتماد الحساب.</div>';return;}if(form)form.style.display='none';await renderRiderDashboard();}catch(e){if(form)form.style.display='block';box.textContent='تعذر التحقق من حساب المندوب: '+e.message+' يمكنك التسجيل إذا لم يكن لديك حساب بالفعل.';}}
-async function renderRiderDashboard(){const box=document.getElementById('riderDashboardContent'),r=riderDashboardRider;if(!box||!r)return;let active=[];try{const z=await Promise.all([sbRequest('orders?select=id,status,delivery_address,rider_id&rider_id=eq.'+encodeURIComponent(r.id)),sbRequest('delivery_orders?select=id,status,delivery_address,rider_id&rider_id=eq.'+encodeURIComponent(r.id))]);const done=s=>['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed','ملغي','ملغى','ملغية','cancelled','canceled'].includes(String(s||'').toLowerCase());active=[...z[0],...z[1]].filter(o=>!done(o.status));}catch(e){box.textContent='تعذر تحميل طلباتك: '+e.message;return;}let h='<div class="record"><b>أهلًا '+escapeText(r.full_name||'مندوب')+'</b><br>كود المندوب: '+escapeText(r.rider_code||'—')+'<br>الحساب: معتمد</div><div class="record"><label style="display:flex;align-items:center;gap:10px"><input id="riderAvailabilityToggle" type="checkbox" style="width:24px;height:24px" '+(r.is_available?'checked':'')+' onchange="changeRiderAvailability(this.checked)"> متاح لاستقبال طلبات التوصيل</label><p class="small">الطلب يظهر لكل المندوبين المتاحين، وأول مندوب يقبله يحصل عليه.</p><div id="riderAvailabilityStatus" class="small">'+(active.length?'لديك طلب جارٍ تنفيذه.':r.is_available?'أنت متاح.':'أنت غير متاح.')+'</div></div>';if(active.length)h+='<h3>طلبك الجاري</h3>'+active.map(o=>'<div class="record">طلب #'+escapeText(o.id)+'<br>الحالة: '+escapeText(o.status||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'</div>').join('');h+='<button class="action secondary" type="button" onclick="testSafinetNotice(\'rider\')">اختبار صوت الإشعار</button><h3>طلبات جديدة متاحة لك</h3><div id="riderOpenOrders">جارٍ التحميل...</div>';box.innerHTML=h;if(r.is_available&&!active.length){startRiderAvailabilityTracking(r.id);await refreshRiderOpenOrders();startRiderOrderPolling();}else{stopRiderAvailabilityTracking();stopRiderOrderPolling();}}
+async function renderRiderDashboard(){const box=document.getElementById('riderDashboardContent'),r=riderDashboardRider;if(!box||!r)return;let active=[];try{const z=await Promise.all([sbRequest('orders?select=id,status,delivery_address,rider_id&rider_id=eq.'+encodeURIComponent(r.id)),sbRequest('delivery_orders?select=id,status,delivery_address,rider_id&rider_id=eq.'+encodeURIComponent(r.id))]);const done=s=>['تم التسليم','تم التوصيل','مكتمل','مكتملة','delivered','completed','ملغي','ملغى','ملغية','cancelled','canceled'].includes(String(s||'').toLowerCase());active=[...z[0],...z[1]].filter(o=>!done(o.status));}catch(e){box.textContent='تعذر تحميل طلباتك: '+e.message;return;}let h='<div class="record"><b>أهلًا '+escapeText(r.full_name||'مندوب')+'</b><br>كود المندوب: '+escapeText(r.rider_code||'—')+'<br>الحساب: معتمد</div><div class="record"><label style="display:flex;align-items:center;gap:10px"><input id="riderAvailabilityToggle" type="checkbox" style="width:24px;height:24px" '+(r.is_available?'checked':'')+' onchange="changeRiderAvailability(this.checked)"> متاح لاستقبال طلبات التوصيل</label><p class="small">الطلب يظهر لكل المندوبين المتاحين، وأول مندوب يقبله يحصل عليه.</p><div id="riderAvailabilityStatus" class="small">'+(active.length?'لديك طلب جارٍ تنفيذه.':r.is_available?'أنت متاح.':'أنت غير متاح.')+'</div></div>';if(active.length)h+='<h3>طلبك الجاري</h3>'+active.map(o=>'<div class="record">طلب #'+escapeText(o.id)+'<br>الحالة: '+escapeText(o.status||'—')+'<br>التسليم: '+escapeText(o.delivery_address||'—')+'</div>').join('');h+='<h3>طلبات جديدة متاحة لك</h3><div id="riderOpenOrders">جارٍ التحميل...</div>';box.innerHTML=h;if(r.is_available&&!active.length){startRiderAvailabilityTracking(r.id);await refreshRiderOpenOrders();startRiderOrderPolling();}else{stopRiderAvailabilityTracking();stopRiderOrderPolling();}}
 async function changeRiderAvailability(on){const t=document.getElementById('riderAvailabilityToggle'),s=document.getElementById('riderAvailabilityStatus');if(t)t.disabled=true;try{await getRiderSession();const z=await sbClient.rpc('set_rider_availability',{p_available:!!on});if(z.error)throw z.error;riderDashboardRider.is_available=!!on;if(on){try{await sendRiderAvailableLocation(riderDashboardRider.id);}catch(e){await sbClient.rpc('set_rider_availability',{p_available:false});riderDashboardRider.is_available=false;throw new Error('تعذر تحديد موقعك فأوقفنا التوفر. '+e.message);}startRiderAvailabilityTracking(riderDashboardRider.id);if(s)s.textContent='أنت متاح. اترك التطبيق مفتوحًا لاستقبال الطلبات والتنبيه الصوتي.';await refreshRiderOpenOrders();startRiderOrderPolling();}else{stopRiderAvailabilityTracking();stopRiderOrderPolling();if(s)s.textContent='تم إيقاف استقبال الطلبات ومشاركة الموقع.';}}catch(e){if(t)t.checked=!!riderDashboardRider.is_available;if(s)s.textContent='تعذر تغيير التوفر: '+e.message;}finally{if(t)t.disabled=false;}}
 async function sendRiderAvailableLocation(id){const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,e=>no(new Error(e.code===1?'اسمح للتطبيق باستخدام الموقع.':'شغّل GPS وحاول مرة أخرى.')),{enableHighAccuracy:true,timeout:12000,maximumAge:5000}));riderLastPosition={lat:p.coords.latitude,lon:p.coords.longitude};const s=await getRiderSession(),c=getSB(),res=await fetch(c.url+'/rest/v1/rider_locations?on_conflict=rider_id',{method:'POST',headers:{apikey:c.key,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({rider_id:id,order_id:null,latitude:riderLastPosition.lat,longitude:riderLastPosition.lon,accuracy_m:p.coords.accuracy,updated_at:new Date().toISOString()})});if(!res.ok){let j={};try{j=await res.json();}catch(e){}throw new Error(j.message||'تعذر حفظ الموقع.');}}
 function startRiderAvailabilityTracking(id){stopRiderAvailabilityTracking();riderAvailabilityTimer=setInterval(()=>{if(!document.hidden&&riderDashboardRider?.is_available)sendRiderAvailableLocation(id).catch(e=>{const s=document.getElementById('riderAvailabilityStatus');if(s)s.textContent='تعذر تحديث الموقع: '+e.message;});},15000);}
@@ -1070,40 +1072,84 @@ async function setupSafinetPush(){
   if(box)box.textContent='تم تجهيز مفاتيح الإشعارات الآمنة بنجاح. فعّل الإشعارات بعد ذلك من حساب كل مستخدم.';
  }catch(e){if(box)box.textContent='تعذر التجهيز: '+(e.message||'خطأ غير معروف');}
 }
-async function enableSafinetPush(role){
- const statusId=role==='customer'?'customerPushStatus':role==='merchant'?'merchantPushStatus':'driverPushStatus';
- const box=document.getElementById(statusId);
- const say=t=>{if(box)box.textContent=t;};
- try{
-  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error('هذا المتصفح لا يدعم إشعارات الهاتف. افتح التطبيق من Chrome وحدّثه.');
-  if(Notification.permission==='denied')throw new Error('إذن الإشعارات مرفوض من إعدادات الهاتف. فعّله من إعدادات الموقع في Chrome.');
-  let permission=Notification.permission;
-  if(permission!=='granted')permission=await Notification.requestPermission();
-  if(permission!=='granted')throw new Error('لم يتم السماح بالإشعارات. اختر سماح عندما يطلب الهاتف الإذن.');
-  if(role==='customer'&&!await ensureCustomerIdentity())throw new Error('تعذر تجهيز حساب العميل.');
-  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
-  const {data:{session},error:sessionError}=await sbClient.auth.getSession();
-  if(sessionError)throw sessionError;
-  if(!session||!session.user)throw new Error('سجّل الدخول إلى حسابك أولاً.');
-  say('جارٍ ربط هذا الهاتف بحسابك...');
-  const cfg=getSB();
-  const keyResponse=await fetch(cfg.url+'/functions/v1/safinet-push-dispatch/public-key',{headers:{'apikey':cfg.key}});
-  const keyData=await keyResponse.json();
-  if(!keyResponse.ok||!keyData.publicKey)throw new Error('لم تكتمل تهيئة الإشعارات من لوحة الإدارة بعد.');
-  let registration=await navigator.serviceWorker.getRegistration('/');
-  if(!registration)registration=await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
-  let subscription=await registration.pushManager.getSubscription();
-  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:safinetBase64ToBytes(keyData.publicKey)});
-  const sub=subscription.toJSON();
-  if(!sub.keys||!sub.keys.p256dh||!sub.keys.auth)throw new Error('تعذر قراءة بيانات اشتراك الإشعارات من الهاتف.');
-  const {error:saveError}=await sbClient.from('push_subscriptions').upsert({
-   user_id:session.user.id,role,endpoint:sub.endpoint,p256dh:sub.keys.p256dh,auth:sub.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
-  },{onConflict:'endpoint'});
-  if(saveError)throw saveError;
-  say('تم تفعيل إشعارات الهاتف لهذا الحساب. ستصلك تنبيهات الطلبات حتى عند إغلاق التطبيق.');
- }catch(e){say('تعذر تفعيل الإشعارات: '+(e.message||'حاول مرة أخرى بعد السماح بالإذن.'));}
+function currentSafinetPushRole(){
+ const active=document.querySelector('.screen.active');
+ if(!active)return null;
+ return active.id==='customer'?'customer':active.id==='merchant'?'merchant':active.id==='driver'?'driver':active.id==='admin'?'admin':null;
 }
+async function safinetPushClient(role){
+ if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
+ const client=role==='admin'?adminClient:sbClient;
+ if(role==='admin'){await requireAdminSession();}
+ else if(role==='customer'&&!await ensureCustomerIdentity())throw new Error('تعذر تجهيز حساب العميل.');
+ const {data:{session},error}=await client.auth.getSession();
+ if(error)throw error;
+ if(!session||!session.user)throw new Error('افتح حسابك أولاً ثم فعّل الإشعار.');
+ return {client,session};
+}
+async function updateSafinetPushToggle(){
+ const button=document.getElementById('safinetPushToggle');if(!button)return;
+ let active=false;
+ try{
+  if('serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window&&Notification.permission==='granted'){
+   const registration=await navigator.serviceWorker.getRegistration('/');
+   active=!!(registration&&await registration.pushManager.getSubscription());
+  }
+ }catch(e){}
+ button.textContent=active?'إيقاف الإشعار':'تفعيل الإشعار';
+ button.classList.toggle('enabled',active);
+ button.setAttribute('aria-pressed',active?'true':'false');
+}
+async function enableSafinetPush(role){
+ if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw new Error('هذا المتصفح لا يدعم إشعارات الهاتف. افتح التطبيق من Chrome وحدّثه.');
+ if(Notification.permission==='denied')throw new Error('إذن الإشعارات مرفوض من إعدادات الهاتف. فعّله من إعدادات الموقع في Chrome.');
+ let permission=Notification.permission;
+ if(permission!=='granted')permission=await Notification.requestPermission();
+ if(permission!=='granted')throw new Error('لم يتم السماح بالإشعارات. اختر سماح عندما يطلب الهاتف الإذن.');
+ const {client,session}=await safinetPushClient(role);
+ const cfg=getSB();
+ const keyResponse=await fetch(cfg.url+'/functions/v1/safinet-push-dispatch/public-key',{headers:{'apikey':cfg.key}});
+ const keyData=await keyResponse.json();
+ if(!keyResponse.ok||!keyData.publicKey)throw new Error('لم تكتمل تهيئة الإشعارات من لوحة الإدارة بعد.');
+ let registration=await navigator.serviceWorker.getRegistration('/');
+ if(!registration)registration=await navigator.serviceWorker.register('/sw.js');
+ await navigator.serviceWorker.ready;
+ let subscription=await registration.pushManager.getSubscription();
+ if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:safinetBase64ToBytes(keyData.publicKey)});
+ const sub=subscription.toJSON();
+ if(!sub.keys||!sub.keys.p256dh||!sub.keys.auth)throw new Error('تعذر قراءة بيانات اشتراك الإشعارات من الهاتف.');
+ const {error:saveError}=await client.from('push_subscriptions').upsert({
+  user_id:session.user.id,role,endpoint:sub.endpoint,p256dh:sub.keys.p256dh,auth:sub.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+ },{onConflict:'endpoint'});
+ if(saveError)throw saveError;
+}
+async function toggleSafinetPush(){
+ const button=document.getElementById('safinetPushToggle');if(!button||button.disabled)return;
+ const role=currentSafinetPushRole();
+ if(!role){alert('افتح حساب العميل أو المندوب أو المحل أو الإدارة أولاً، ثم استخدم زر الإشعار الموجود أعلى الشاشة.');return;}
+ button.disabled=true;
+ try{
+  const registration=await navigator.serviceWorker.getRegistration('/');
+  const subscription=registration&&await registration.pushManager.getSubscription();
+  if(subscription){
+   const {client}=await safinetPushClient(role);
+   const {error}=await client.from('push_subscriptions').delete().eq('endpoint',subscription.endpoint);
+   if(error)throw error;
+   const removed=await subscription.unsubscribe();
+   if(!removed)throw new Error('لم يؤكد الهاتف إيقاف الاشتراك. حاول مرة أخرى.');
+   alert('تم إيقاف إشعارات هذا الجهاز.');
+  }else{
+   await enableSafinetPush(role);
+   alert('تم تفعيل إشعارات الهاتف لهذا الحساب.');
+  }
+ }catch(e){alert('تعذر تغيير الإشعار: '+(e.message||'تحقق من إذن الإشعارات والاتصال.'));}
+ finally{button.disabled=false;await updateSafinetPushToggle();}
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ updateSafinetPushToggle();
+ const observer=new MutationObserver(()=>updateSafinetPushToggle());
+ document.querySelectorAll('.screen').forEach(screen=>observer.observe(screen,{attributes:true,attributeFilter:['class']}));
+});
 
 function initSupabaseAuth(){
  const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
