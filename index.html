@@ -866,8 +866,8 @@ async function renderRiderDashboard(){
  let active=[];
  try{
   const [z,deliveryRows,payouts]=await Promise.all([
-   sbRequest('orders?select=id,status,delivery_fee,created_at,delivered_at,rider_id&rider_id=eq.'+encodeURIComponent(r.id)+'&order=created_at.desc'),
-   sbRequest('delivery_orders?select=id,status,delivery_fee,created_at,delivered_at,rider_id&rider_id=eq.'+encodeURIComponent(r.id)+'&order=created_at.desc'),
+   sbRequest('orders?select=id,status,delivery_fee,delivery_address,created_at,delivered_at,rider_id&rider_id=eq.'+encodeURIComponent(r.id)+'&order=created_at.desc'),
+   sbRequest('delivery_orders?select=id,status,delivery_fee,delivery_address,created_at,delivered_at,rider_id&rider_id=eq.'+encodeURIComponent(r.id)+'&order=created_at.desc'),
    sbRequest('rider_payouts?select=id,amount,payment_method,reference,notes,paid_at&rider_id=eq.'+encodeURIComponent(r.id)+'&order=paid_at.desc')
   ]);
   const all=[...z,...deliveryRows];
