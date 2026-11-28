@@ -431,7 +431,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -486,7 +486,7 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
-<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div></div>
+<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div></div>
 <div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب. اترك التطبيق مفتوحًا؛ قد يتوقف تحديث الموقع إذا أُغلق التطبيق أو عمل الهاتف على توفير الطاقة.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
 </section>
 <section id="merchant" class="screen">
@@ -510,7 +510,7 @@ if ("serviceWorker" in navigator) {
 </form>
 <div class="notice" id="merchantOrdersPanel" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right">
 <h2>طلبات المحل</h2><p class="small">تظهر هنا الطلبات الخاصة بمحلك فقط. افتح التطبيق على نفس الهاتف والحساب الذي سجلت منه المحل.</p>
-<div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div>
+<div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div><button class="action secondary" type="button" onclick="enableSafinetPush('merchant')">تفعيل إشعارات الطلبات على الهاتف</button><div id="merchantPushStatus" class="small" aria-live="polite"></div>
 <div id="merchantOrders" class="small" aria-live="polite"></div>
 </div>
 </section>
@@ -540,7 +540,7 @@ if ("serviceWorker" in navigator) {
 <div id="adminWorkspace" style="display:none">
 <div id="adminHome" class="notice">
 <button class="back" onclick="go('home')">رجوع</button>
-<button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button>
+<button class="action secondary" type="button" onclick="adminLogout()">تسجيل الخروج</button><button class="action" type="button" onclick="setupSafinetPush()">تهيئة إشعارات الهاتف للتطبيق</button><div id="adminPushSetupStatus" class="small" aria-live="polite"></div>
 <h2>إدارة سفينة نوح</h2><p class="small">إدارة التطبيق — نوح سماره — 01094881059</p><p>اختر القسم الذي تريد إدارته:</p>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegistrations',renderAdmin)">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegisteredShops',renderRegisteredShops)">المحلات المسجلة</button>
@@ -885,6 +885,65 @@ function startOrderRealtime(client,key){
   if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')delete orderRealtimeChannels[key];
  });
 }
+
+function safinetBase64ToBytes(value){
+ const padding='='.repeat((4-value.length%4)%4);
+ const raw=atob((value+padding).replace(/-/g,'+').replace(/_/g,'/'));
+ return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function setupSafinetPush(){
+ const box=document.getElementById('adminPushSetupStatus');
+ if(box)box.textContent='جارٍ تجهيز مفاتيح الإشعارات الآمنة...';
+ try{
+  await requireAdminSession();
+  const {data:{session},error}=await adminClient.auth.getSession();
+  if(error)throw error;
+  if(!session)throw new Error('سجّل دخول الإدارة أولاً.');
+  const cfg=getSB();
+  const response=await fetch(cfg.url+'/functions/v1/safinet-push-dispatch',{
+   method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+session.access_token},
+   body:JSON.stringify({action:'setup'})
+  });
+  const result=await response.json();
+  if(!response.ok||!result.success)throw new Error(result.error||'تعذر تهيئة الإشعارات.');
+  if(box)box.textContent='تم تجهيز مفاتيح الإشعارات الآمنة بنجاح. فعّل الإشعارات بعد ذلك من حساب كل مستخدم.';
+ }catch(e){if(box)box.textContent='تعذر التجهيز: '+(e.message||'خطأ غير معروف');}
+}
+async function enableSafinetPush(role){
+ const statusId=role==='customer'?'customerPushStatus':role==='merchant'?'merchantPushStatus':'driverPushStatus';
+ const box=document.getElementById(statusId);
+ const say=t=>{if(box)box.textContent=t;};
+ try{
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw new Error('هذا المتصفح لا يدعم إشعارات الهاتف. افتح التطبيق من Chrome وحدّثه.');
+  if(role==='customer'&&!await ensureCustomerIdentity())throw new Error('تعذر تجهيز حساب العميل.');
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
+  const {data:{session},error:sessionError}=await sbClient.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!session||!session.user)throw new Error('سجّل الدخول إلى حسابك أولاً.');
+  if(Notification.permission==='denied')throw new Error('إذن الإشعارات مرفوض من إعدادات الهاتف. فعّله من إعدادات الموقع في Chrome.');
+  let permission=Notification.permission;
+  if(permission!=='granted')permission=await Notification.requestPermission();
+  if(permission!=='granted')throw new Error('لم يتم السماح بالإشعارات. اختر سماح عندما يطلب الهاتف الإذن.');
+  say('جارٍ ربط هذا الهاتف بحسابك...');
+  const cfg=getSB();
+  const keyResponse=await fetch(cfg.url+'/functions/v1/safinet-push-dispatch/public-key',{headers:{'apikey':cfg.key}});
+  const keyData=await keyResponse.json();
+  if(!keyResponse.ok||!keyData.publicKey)throw new Error('لم تكتمل تهيئة الإشعارات من لوحة الإدارة بعد.');
+  let registration=await navigator.serviceWorker.getRegistration('/');
+  if(!registration)registration=await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:safinetBase64ToBytes(keyData.publicKey)});
+  const sub=subscription.toJSON();
+  if(!sub.keys||!sub.keys.p256dh||!sub.keys.auth)throw new Error('تعذر قراءة بيانات اشتراك الإشعارات من الهاتف.');
+  const {error:saveError}=await sbClient.from('push_subscriptions').upsert({
+   user_id:session.user.id,role,endpoint:sub.endpoint,p256dh:sub.keys.p256dh,auth:sub.keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()
+  },{onConflict:'endpoint'});
+  if(saveError)throw saveError;
+  say('تم تفعيل إشعارات الهاتف لهذا الحساب. ستصلك تنبيهات الطلبات حتى عند إغلاق التطبيق.');
+ }catch(e){say('تعذر تفعيل الإشعارات: '+(e.message||'حاول مرة أخرى بعد السماح بالإذن.'));}
+}
+
 function initSupabaseAuth(){
  const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
  if(!sbClient){sbClient=window.supabase.createClient(c.url,c.key,{auth:{flowType:'pkce',detectSessionInUrl:false,persistSession:true,autoRefreshToken:true,storageKey:'safinet-user-auth'}});}
