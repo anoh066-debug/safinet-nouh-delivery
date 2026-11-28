@@ -844,6 +844,7 @@ function renderSafinetScreen(id){
 function go(id){
  const target=document.getElementById(id);
  if(!target||!target.classList.contains('screen'))return;
+ if(['customer','merchant','driver'].includes(id)&&initSupabaseAuth())startOrderRealtime(sbClient,'user');
  const current=document.querySelector('.screen.active');
  if(current&&current.id===id)return;
  try{history.pushState({safinetScreen:id},'',location.pathname+location.search+'#'+id);}catch(e){}
@@ -858,6 +859,30 @@ window.addEventListener('popstate',event=>{
  renderSafinetScreen(previous||'home');
 });
 let sbClient=null,adminClient=null,adminSession=null,adminRecoveryMode=false;
+let orderRealtimeChannels={};let orderRealtimeRefreshTimer=null;
+function startOrderRealtime(client,key){
+ if(!client||orderRealtimeChannels[key])return;
+ const refresh=()=>{
+  if(orderRealtimeRefreshTimer)clearTimeout(orderRealtimeRefreshTimer);
+  orderRealtimeRefreshTimer=setTimeout(()=>{
+   const active=document.querySelector('.screen.active');
+   if(!active)return;
+   if(active.id==='merchant')refreshMerchantOrders();
+   else if(active.id==='customer')refreshCustomerOrders();
+   else if(active.id==='driver'){
+    if(riderDashboardRider?.is_available)refreshRiderOpenOrders();
+    else if(riderDashboardRider)renderRiderDashboard();
+   }else if(active.id==='admin')renderRiderLedger();
+  },300);
+ };
+ let channel=client.channel('safinet-order-updates-'+key);
+ ['orders','delivery_orders','order_events','delivery_order_events'].forEach(table=>{
+  channel=channel.on('postgres_changes',{event:'*',schema:'public',table},refresh);
+ });
+ orderRealtimeChannels[key]=channel.subscribe((status)=>{
+  if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')delete orderRealtimeChannels[key];
+ });
+}
 function initSupabaseAuth(){
  const c=getSB();if(!c.url||!c.key||!window.supabase)return false;
  if(!sbClient){sbClient=window.supabase.createClient(c.url,c.key,{auth:{flowType:'pkce',detectSessionInUrl:false,persistSession:true,autoRefreshToken:true,storageKey:'safinet-user-auth'}});}
@@ -871,6 +896,7 @@ async function verifyAdminSession(){
  const {data:{session},error:se}=await adminClient.auth.getSession();if(se)throw se;adminSession=session;if(!session)return false;
  const {data:{user},error}=await adminClient.auth.getUser();if(error)throw error;
  if(!user||!user.app_metadata||user.app_metadata.role!=='admin'){await adminClient.auth.signOut();adminSession=null;throw new Error('هذا الحساب ليس لديه صلاحية إدارة التطبيق.');}
+ startOrderRealtime(adminClient,'admin');
  return true;
 }
 async function showAdminAccess(){const login=document.getElementById('adminLogin'),workspace=document.getElementById('adminWorkspace');if(workspace)workspace.style.display='none';if(login)login.style.display='block';['adminEmail','adminPassword','sbUrl','sbKey'].forEach(id=>{const field=document.getElementById(id);if(field)field.value='';});try{const ok=await verifyAdminSession();if(adminRecoveryMode){showAdminRecoveryPanel();return;}if(ok){if(login)login.style.display='none';if(workspace)workspace.style.display='block';renderAdminPricing();}}catch(e){const b=document.getElementById('adminLoginStatus');if(b)b.textContent=e.message||'تعذر التحقق من حساب الإدارة.';if(adminRecoveryMode)showAdminRecoveryPanel();}}
