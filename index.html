@@ -1686,8 +1686,14 @@ async function renderOrders(){
    const rider=riderMap[String(x.rider_id)],history=(deliveryEventMap[String(x.id)]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' ('+escapeText(e.actor_role)+') — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
    return '<div class="record"><b>طلب توصيل #'+escapeText(field(x,'id'))+'</b><br>العميل: '+escapeText(field(x,'customer_name'))+'<br>الهاتف: '+escapeText(field(x,'contact_phone'))+'<br>نقطة الاستلام: '+escapeText(field(x,'pickup_name'))+' — '+escapeText(field(x,'pickup_address'))+'<br>المحل المرتبط: '+escapeText(field(x,'shop_id'))+'<br>التوصيل: '+escapeText(field(x,'delivery_address'))+'<br>التفاصيل: '+escapeText(field(x,'order_details'))+'<br>الحالة: <b>'+escapeText(field(x,'status'))+'</b><br>المندوب: '+escapeText(rider?(rider.full_name+' — '+(rider.rider_code||rider.phone||'')):'—')+(history?'<hr><b>سجل حركة الطلب</b>'+history:'<br><small>لم تُسجل إجراءات إضافية على هذا الطلب بعد.</small>')+'<br><small>'+escapeText(field(x,'created_at'))+'</small></div>';
   }).join('');
-  box.innerHTML='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3>'+(localHtml||'<p>لا توجد طلبات محلية.</p>')+'<h3>طلبات المتجر ('+cloud.length+')</h3>'+(cloudHtml||'<p>لا توجد طلبات متجر.</p>')+'<h3>طلبات التوصيل ('+deliveryOrders.length+')</h3>'+(deliveryHtml||'<p>لا توجد طلبات توصيل.</p>');
+  box.innerHTML='<h3>الطلبات المحفوظة على هذا الهاتف ('+local.length+')</h3><button type="button" class="action secondary" onclick="clearSafinetLocalOrders()" style="margin:8px 0 12px">حذف الطلبات المحفوظة على هذا الهاتف</button>'+(localHtml||'<p>لا توجد طلبات محلية.</p>')+'<h3>طلبات المتجر ('+cloud.length+')</h3>'+(cloudHtml||'<p>لا توجد طلبات متجر.</p>')+'<h3>طلبات التوصيل ('+deliveryOrders.length+')</h3>'+(deliveryHtml||'<p>لا توجد طلبات توصيل.</p>');
  }catch(e){box.textContent='تعذر تحميل الطلبات: '+(e.message||'خطأ غير معروف');}
+}
+
+function clearSafinetLocalOrders(){
+ if(!confirm('سيتم حذف جميع الطلبات المحفوظة على هذا الهاتف فقط. لن يتم حذف حسابات أو محلات أو منتجات. هل تريد المتابعة؟'))return;
+ try{localStorage.removeItem('safinet_orders');alert('تم حذف الطلبات المحفوظة على هذا الهاتف.');renderOrders();}
+ catch(e){alert('تعذر حذف الطلبات من هذا الهاتف: '+(e.message||'خطأ غير معروف'));}
 }
 function previewShopRegistrationImages(){
  const storefront=document.getElementById('merchantStorefrontImage');
