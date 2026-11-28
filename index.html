@@ -729,7 +729,7 @@ async function refreshMerchantOrders(){
   status.textContent='تم ربط '+shops.length+' محل بحسابك — الطلبات المعروضة تخص محلاتك فقط.';
   status.innerHTML+=' <button class="action secondary" type="button" onclick="testSafinetNotice(\'merchant\')">اختبار صوت الإشعار</button>';
   const card=(o,kind)=>{
-   const key=kind+':'+o.id,pending=kind==='store'?['جديد','new','pending'].includes(String(o.status||'').toLowerCase()):o.status==='new';
+   const key=kind+':'+o.id,pending=kind==='store'?['جديد','new','pending'].includes(String(o.status||'').toLowerCase()):['new','pending'].includes(String(o.status||'').toLowerCase());
    const history=(eventMap[key]||[]).map(e=>'<div class="small">• '+escapeText(e.details||e.event_type)+' — '+escapeText(e.actor_name||e.actor_role)+' — '+escapeText(e.created_at?new Date(e.created_at).toLocaleString('ar-EG'):'')+'</div>').join('');
    const phone=o.customer_phone||o.contact_phone||'—';
    const actions=pending?'<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px"><button class="action" type="button" onclick="'+(kind==='store'?'decideShopOrder':'decideShopDeliveryOrder')+'('+Number(o.id)+',\'accept\',this)">قبول الطلب</button><button class="action secondary" type="button" onclick="'+(kind==='store'?'decideShopOrder':'decideShopDeliveryOrder')+'('+Number(o.id)+',\'reject\',this)">رفض الطلب</button></div>':'';
@@ -814,16 +814,16 @@ function stopRiderOrderPolling(){if(riderOrderPollTimer)clearInterval(riderOrder
 async function refreshRiderOpenOrders(){
  const box=document.getElementById('riderOpenOrders');if(!box||!riderDashboardRider?.is_available)return;
  try{
-  const acceptedStatus=encodeURIComponent('مقبول من المحل');
-  const deliveryFilter=encodeURIComponent('(and(shop_id.is.null,status.in.(new,pending)),and(shop_id.not.is.null,status.eq.accepted))');
+  const storeOpenStatuses=encodeURIComponent('in.(جديد,new,pending,مقبول من المحل)');
+  const deliveryFilter=encodeURIComponent('(and(shop_id.is.null,status.in.(new,pending)),and(shop_id.not.is.null,status.in.(new,pending,accepted)))');
   const z=await Promise.all([
-   sbRequest('orders?select=id,shop_name,customer_name,customer_phone,delivery_address,order_details,shop_id,status&rider_id=is.null&status=eq.'+acceptedStatus+'&order=created_at.desc'),
+   sbRequest('orders?select=id,shop_name,customer_name,customer_phone,delivery_address,order_details,shop_id,status&rider_id=is.null&status='+storeOpenStatuses+'&order=created_at.desc'),
    sbRequest('delivery_orders?select=id,pickup_name,pickup_address,delivery_address,order_details,shop_id,status&rider_id=is.null&or='+deliveryFilter+'&order=created_at.desc')
   ]);
   const rows=[...z[0].map(o=>({...o,kind:'orders',pickup:o.shop_name||'المحل'})),...z[1].map(o=>({...o,kind:'delivery_orders',pickup:(o.pickup_name||'مكان الاستلام')+' — '+(o.pickup_address||'')}))];
   const keys=new Set(rows.map(o=>o.kind+':'+o.id)),fresh=[...keys].filter(k=>!riderSeenOrderKeys.has(k));
   if(riderOrderPollingInitialized&&fresh.length)playSafinetNotice('rider');riderSeenOrderKeys=keys;riderOrderPollingInitialized=true;
-  if(!rows.length){box.textContent='لا توجد طلبات جديدة متاحة حاليًا. طلبات المتاجر تظهر بعد موافقة المحل، وطلبات التوصيل المباشر تظهر فور إرسالها.';return;}
+  if(!rows.length){box.textContent='لا توجد طلبات جديدة متاحة حاليًا. طلبات المتاجر وطلبات التوصيل المرتبطة بالمحلات تظهر لك فور إرسالها بالتزامن مع صاحب المحل.';return;}
   const ids=[...new Set(rows.map(o=>o.shop_id).filter(Boolean))];let shops={};
   if(ids.length){try{const a=await sbRequest('shops?select=id,latitude,longitude&id=in.('+ids.join(',')+')');shops=Object.fromEntries(a.map(s=>[String(s.id),s]));}catch(e){}}
   rows.forEach(o=>{const s=shops[String(o.shop_id)];o.distance=riderLastPosition&&s&&s.latitude!=null&&s.longitude!=null?riderDistanceKm(riderLastPosition,{lat:Number(s.latitude),lon:Number(s.longitude)}):null;});
@@ -873,8 +873,7 @@ function startOrderRealtime(client,key){
    if(active.id==='merchant')refreshMerchantOrders();
    else if(active.id==='customer')refreshCustomerOrders();
    else if(active.id==='driver'){
-    if(riderDashboardRider?.is_available)refreshRiderOpenOrders();
-    else if(riderDashboardRider)renderRiderDashboard();
+    if(riderDashboardRider)loadRiderDashboard();
    }else if(active.id==='admin')renderRiderLedger();
   },300);
  };
