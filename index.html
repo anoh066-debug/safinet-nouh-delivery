@@ -1261,7 +1261,7 @@ function filterAdminShops(value){
  if(!box)return;
  const q=String(value||'').trim().toLocaleLowerCase();
  const rows=adminShopRecords.filter(x=>[x.shop_name,x.phone,x.activity_type,x.address].some(v=>String(v||'').toLocaleLowerCase().includes(q)));
- box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'مسجل — يحتاج اعتماد الإدارة':'غير معتمد'))+(x.is_registered&&!x.is_active?'<br><button class="action" type="button" onclick="approveShop('+JSON.stringify(x.id)+')">اعتماد المحل</button>':'')+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button><button class="action secondary" type="button" onclick="deleteShop('+JSON.stringify(x.id)+')">حذف المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
+ box.innerHTML=rows.map(x=>'<div class="record"><b>'+escapeText(x.shop_name)+'</b><br>الهاتف: '+escapeText(x.phone||'—')+'<br>النشاط: '+escapeText(x.activity_type||'—')+'<br>'+escapeText(x.address||'—')+'<br>الحالة: '+(x.is_active?'ظاهر للعملاء':(x.is_registered?'موقوف ومخفي — مسجل':'غير معتمد'))+'<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">'+(x.is_active?'<button class="action secondary" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء المحل</button>':'<button class="action" type="button" onclick="setAdminAccountActive(\'shop\','+JSON.stringify(x.id)+',true)">إعادة تفعيل المحل</button>')+'<button class="action secondary" type="button" onclick="editShop('+JSON.stringify(x.id)+')">تعديل بيانات المحل</button></div></div>').join('')||'<p>لا توجد محلات تطابق البحث.</p>';
 }
 async function renderRegisteredShops(){
  const box=document.getElementById('registeredShopsContent');
@@ -1269,7 +1269,7 @@ async function renderRegisteredShops(){
  box.textContent='جارٍ تحميل المحلات المسجلة...';
  try{
   await requireAdminSession();
-  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&is_active=eq.true&is_registered=eq.true&order=shop_name.asc');
+  const shops=await sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&is_registered=eq.true&order=shop_name.asc');
   adminShopRecords=shops||[];
   box.innerHTML='<label for="adminShopSearch">ابحث باسم المحل أو رقم الهاتف أو النشاط أو العنوان</label><input id="adminShopSearch" type="search" placeholder="اكتب اسم المحل أو رقم الهاتف..." oninput="filterAdminShops(this.value)"><div id="adminShopsList" style="margin-top:10px"></div>';
   filterAdminShops('');
@@ -1286,6 +1286,21 @@ async function approveRider(id){
   await renderAdmin();
  }catch(e){alert('تعذر اعتماد المندوب: '+(e&&e.message?e.message:'خطأ غير معروف'));}
 }
+async function setAdminAccountActive(kind,id,active){
+ const labels={customer:'العميل',rider:'المندوب',shop:'المحل'},tables={customer:'customers',rider:'riders',shop:'shops'};
+ const label=labels[kind],table=tables[kind];
+ if(!label||!table||!id)return;
+ const action=active?'إعادة تفعيل':'إيقاف وإخفاء';
+ if(!confirm('هل تؤكد '+action+' حساب '+label+'؟\nلن يتم حذف البيانات أو سجل الطلبات.'))return;
+ try{
+  await requireAdminSession();
+  const patch=kind==='rider'?{is_active:active,is_available:false}: {is_active:active};
+  const rows=await sbRequest(table+'?id=eq.'+encodeURIComponent(id),'PATCH',patch);
+  if(!rows||!rows.length)throw new Error('لم يتم تحديث الحالة. تحقق من صلاحيات الإدارة.');
+  alert(active?'تمت إعادة تفعيل '+label+'.':'تم إيقاف '+label+' وإخفاؤه من القوائم.');
+  if(kind==='shop')await renderRegisteredShops();else await renderAdmin();
+ }catch(e){alert('تعذر تحديث حالة '+label+': '+(e.message||'خطأ غير معروف'));}
+}
 async function renderAdmin(){
  const box=document.getElementById('adminData');
  if(!box){alert('تعذر العثور على مساحة عرض بيانات الإدارة.');return;}
@@ -1293,10 +1308,20 @@ async function renderAdmin(){
  try{
   await requireAdminSession();
   box.textContent='جارٍ تحميل التسجيلات والمحلات...';
-  const [cs,ds,shops]=await Promise.all([sbRequest('customers?select=*&order=created_at.desc'),sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,national_id,national_id_front_path,national_id_back_path,vehicle_photo_path,driving_license_front_path,vehicle_license_front_path,approval_status,is_available,created_at&order=created_at.desc'),sbRequest('shops?select=id,shop_name,phone,activity_type,address,is_active,is_registered&order=shop_name.asc')]);
-  adminShopRecords=shops||[];
-  let html='<h3>العملاء ('+cs.length+')</h3>'+ (cs.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'</div>').join('')||'<p>لا يوجد عملاء.</p>');
-  html+='<h3>المندوبون ('+ds.length+')</h3>'+(ds.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+(x.approval_status==='pending'?'<br><button class="action" type="button" onclick="approveRider(\''+escapeText(x.id)+'\')">اعتماد المندوب</button>':'')+'</div>').join('')||'<p>لا يوجد مندوبون.</p>');
+  const [cs,ds]=await Promise.all([
+   sbRequest('customers?select=*&order=created_at.desc'),
+   sbRequest('riders?select=id,full_name,phone,address,vehicle_type,vehicle_details,plate_number,national_id,national_id_front_path,national_id_back_path,vehicle_photo_path,driving_license_front_path,vehicle_license_front_path,approval_status,is_available,is_active,created_at&order=created_at.desc')
+  ]);
+  const activeCustomers=(cs||[]).filter(x=>x.is_active!==false),inactiveCustomers=(cs||[]).filter(x=>x.is_active===false);
+  const activeRiders=(ds||[]).filter(x=>x.is_active!==false),inactiveRiders=(ds||[]).filter(x=>x.is_active===false);
+  let html='<h3>العملاء النشطون ('+activeCustomers.length+')</h3>'+
+   (activeCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>العنوان: '+escapeText(x.address||'—')+'<br><button class="action secondary" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء العميل</button></div>').join('')||'<p>لا يوجد عملاء نشطون.</p>');
+  html+='<h3>العملاء الموقوفون ('+inactiveCustomers.length+')</h3>'+
+   (inactiveCustomers.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br><button class="action" type="button" onclick="setAdminAccountActive(\'customer\','+JSON.stringify(x.id)+',true)">إعادة تفعيل العميل</button></div>').join('')||'<p>لا يوجد عملاء موقوفون.</p>');
+  html+='<h3>المندوبون النشطون ('+activeRiders.length+')</h3>'+
+   (activeRiders.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br>الرقم القومي: '+escapeText(x.national_id||'—')+'<br>المركبة: '+(x.vehicle_type==='motorcycle'?'موتوسيكل':x.vehicle_type==='car'?'سيارة':'عجلة')+'<br>التفاصيل: '+escapeText(x.vehicle_details||'—')+'<br>رقم اللوحة: '+escapeText(x.plate_number||'—')+'<br>المنطقة: '+escapeText(x.address||'—')+'<br>'+riderDocumentButton('صورة البطاقة — الوجه',x.national_id_front_path)+riderDocumentButton('صورة البطاقة — الظهر',x.national_id_back_path)+riderDocumentButton('صورة المركبة',x.vehicle_photo_path)+riderDocumentButton('رخصة القيادة',x.driving_license_front_path)+riderDocumentButton('رخصة المركبة',x.vehicle_license_front_path)+'<br>الحالة: '+escapeText(x.approval_status||'بانتظار المراجعة')+(x.approval_status==='pending'?'<br><button class="action" type="button" onclick="approveRider(\''+escapeText(x.id)+'\')">اعتماد المندوب</button>':'')+'<br><button class="action secondary" type="button" onclick="setAdminAccountActive(\'rider\','+JSON.stringify(x.id)+',false)">إيقاف وإخفاء المندوب</button></div>').join('')||'<p>لا يوجد مندوبون نشطون.</p>');
+  html+='<h3>المندوبون الموقوفون ('+inactiveRiders.length+')</h3>'+
+   (inactiveRiders.map(x=>'<div class="record"><b>'+escapeText(x.full_name)+'</b><br>الهاتف: '+escapeText(x.phone)+'<br><button class="action" type="button" onclick="setAdminAccountActive(\'rider\','+JSON.stringify(x.id)+',true)">إعادة تفعيل المندوب</button></div>').join('')||'<p>لا يوجد مندوبون موقوفون.</p>');
   box.innerHTML=html;
  }catch(e){box.textContent='تعذر تحميل بيانات الإدارة: '+(e&&e.message?e.message:'خطأ غير معروف');}
 }
