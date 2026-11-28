@@ -923,7 +923,9 @@ async function openSafinetChat(){
   if(!session||!session.user)throw new Error('سجّل الدخول من حسابك أولاً حتى تتمكن من استخدام الدردشة.');
   chatCurrentUserId=session.user.id;
   const rooms=await safinetChatRequest('chat_rooms?select=id,room_type,title,is_active,order_source,order_id,created_at&order=created_at.desc');
-  chatRoomsCache=rooms||[];
+  // اعرض مجتمع نوع الحساب الذي فتح الدردشة فقط، مع الاحتفاظ بمحادثات الطلبات الخاصة المرتبطة به.
+  const roleRoomType=chatReturnScreen==='customer'?'customers':chatReturnScreen==='driver'?'riders':chatReturnScreen==='merchant'?'shops':null;
+  chatRoomsCache=(rooms||[]).filter(r=>chatIsAdmin || (roleRoomType && r.room_type===roleRoomType) || r.room_type==='order');
   const rank=r=>r.room_type==='order'?0:r.room_type==='announcements'?1:r.room_type==='riders'?2:r.room_type==='shops'?3:4;
   chatRoomsCache.sort((a,b)=>rank(a)-rank(b)||Number(b.id)-Number(a.id));
   if(status)status.textContent=chatIsAdmin?'دخول الإدارة: يمكنك متابعة المجموعات وإرسال إعلانات الإدارة.':'أهلاً بك. ستظهر لك المجموعات المسموح بها وحوارات طلباتك فقط.';
