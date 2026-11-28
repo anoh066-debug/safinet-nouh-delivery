@@ -220,6 +220,28 @@ input,select{width:100%;padding:14px;border:1px solid #91b4ef;border-radius:12px
  #admin #adminHome>button.action.secondary{min-height:52px}
 }
 
+
+/* دردشة سفينة نوح */
+#chat.screen.active{min-height:100vh;min-height:100dvh;padding:14px 12px 28px;background:linear-gradient(180deg,#eaf4ff,#f7fbff);color:#17345d}
+.chat-panel{background:#fff;border:1px solid #d5e3f2;border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 5px 16px #17345d0d}
+.chat-room-list{display:grid;gap:8px}
+.chat-room-button{width:100%;text-align:right;border:1px solid #d7e5f4;border-radius:13px;background:#f7faff;color:#17345d;padding:12px;font:inherit;cursor:pointer}
+.chat-room-button.active{border:2px solid #1683bd;background:#eaf5ff}
+.chat-room-button strong{display:block;color:#073b91}
+.chat-room-button small{display:block;color:#647991;margin-top:4px}
+.chat-messages{display:flex;flex-direction:column;gap:9px;max-height:48vh;overflow:auto;padding:8px 2px}
+.chat-message{max-width:88%;align-self:flex-start;background:#edf4fc;border:1px solid #d9e5f2;border-radius:14px;padding:10px 12px;overflow-wrap:anywhere}
+.chat-message.mine{align-self:flex-end;background:#e4f4ff;border-color:#a9d5f2}
+.chat-message .meta{font-size:11px;color:#667c94;margin-bottom:5px}
+.chat-message .body{white-space:pre-wrap;line-height:1.7;color:#17345d}
+.chat-compose{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
+.chat-compose textarea{flex:1;min-width:0;min-height:48px;max-height:120px;padding:12px;border:1px solid #bfd1e6;border-radius:12px;font:inherit;resize:vertical}
+.chat-compose button{width:auto;min-width:86px}
+.chat-empty{padding:18px;text-align:center;color:#647991;background:#f7faff;border:1px dashed #bfd1e6;border-radius:13px;line-height:1.8}
+.chat-room-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.chat-closed{color:#a43d2d;font-size:12px;font-weight:bold}
+.chat-delete{border:0;background:#fff0ed;color:#a43d2d;border-radius:8px;padding:5px 8px;margin-top:6px}
+
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
@@ -442,7 +464,7 @@ if ("serviceWorker" in navigator) {
 <section id="customer" class="screen">
 <button class="back" onclick="go('home')">رجوع</button>
 
-<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
+<div class="notice"><h2>المحلات التجارية</h2><p>تصفح المحلات واختر منتجاتك. بياناتك ومكان التسليم هتدخلهم عند إتمام الطلب فقط.</p><div id="customerIdentityStatus" class="small" aria-live="polite">جارٍ تجهيز حساب العميل...</div><div id="customerOrdersStatus" class="small" aria-live="polite">جارٍ تجهيز متابعة الطلبات...</div><button class="action secondary" type="button" onclick="chatReturnScreen='customer';go('chat')">💬 الدردشة والمجتمع</button><button class="action secondary" type="button" onclick="enableSafinetPush('customer')">تفعيل إشعارات الطلبات على الهاتف</button><div id="customerPushStatus" class="small" aria-live="polite"></div><div id="shopCatalog" class="small" aria-live="polite">جارٍ تحميل المحلات المعتمدة...</div></div>
 
 <div class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px">
 <h2>سلة مشترياتك</h2><div id="cartItems" class="small">السلة فارغة.</div><div class="row" style="justify-content:space-between;margin-top:12px"><b>إجمالي المشتريات</b><b id="cartTotal">0 جنيه</b></div>
@@ -497,7 +519,7 @@ if ("serviceWorker" in navigator) {
 <button class="action" type="submit">تسجيل المندوب</button>
 <div id="riderStatus" class="small" aria-live="polite"></div>
 </form>
-<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div></div>
+<div id="riderDashboard" class="notice" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right"><h2>حساب المندوب واستقبال الطلبات</h2><div id="riderDashboardContent" class="small" aria-live="polite">جارٍ التحقق من حساب المندوب...</div><button class="action secondary" type="button" onclick="enableSafinetPush('driver')">تفعيل إشعارات الطلبات على الهاتف</button><div id="driverPushStatus" class="small" aria-live="polite"></div><button class="action secondary" type="button" onclick="chatReturnScreen='driver';go('chat')">💬 الدردشة والمجتمع</button></div>
 <div class="rider-tracking-panel"><h2>تتبع طلباتك ومشاركة موقعك</h2><p class="tracking-status">عند اعتماد حسابك وإسناد طلب إليك، فعّل مشاركة الموقع ليظهر مكانك لإدارة التطبيق أثناء تنفيذ الطلب. اترك التطبيق مفتوحًا؛ قد يتوقف تحديث الموقع إذا أُغلق التطبيق أو عمل الهاتف على توفير الطاقة.</p><button class="action" type="button" onclick="startRiderLocationTracking()">بدء مشاركة موقعي أثناء التوصيل</button><button class="action secondary" type="button" onclick="stopRiderLocationTracking()">إيقاف مشاركة الموقع</button><div id="riderTrackingStatus" class="tracking-status" aria-live="polite">لم يبدأ التتبع بعد.</div></div>
 </section>
 <section id="merchant" class="screen">
@@ -522,9 +544,32 @@ if ("serviceWorker" in navigator) {
 <div class="notice" id="merchantOrdersPanel" style="margin:12px 14px;border:1px solid #9bbcf0;border-radius:16px;text-align:right">
 <h2>طلبات المحل</h2><p class="small">تظهر هنا الطلبات الخاصة بمحلك فقط. افتح التطبيق على نفس الهاتف والحساب الذي سجلت منه المحل.</p>
 <div id="merchantOrdersStatus" class="small" aria-live="polite">جارٍ التحقق من حساب المحل...</div><button class="action secondary" type="button" onclick="enableSafinetPush('merchant')">تفعيل إشعارات الطلبات على الهاتف</button><div id="merchantPushStatus" class="small" aria-live="polite"></div>
-<div id="merchantOrders" class="small" aria-live="polite"></div>
+<div id="merchantOrders" class="small" aria-live="polite"></div><button class="action secondary" type="button" onclick="chatReturnScreen='merchant';go('chat')">💬 الدردشة والمجتمع</button>
 </div>
 </section>
+
+<section id="chat" class="screen">
+ <button class="back" type="button" onclick="closeSafinetChat()">رجوع</button>
+ <div class="notice" style="padding:58px 14px 14px">
+  <h2>💬 الدردشة والمجتمع</h2>
+  <p>تواصل آمن بين مستخدمي سفينة نوح دليفري.</p>
+  <div id="safinetChatStatus" class="small" aria-live="polite">جارٍ تجهيز الدردشة...</div>
+ </div>
+ <div class="chat-panel">
+  <h3>المجموعات والمحادثات</h3>
+  <div id="safinetChatRooms" class="chat-room-list"><div class="chat-empty">جارٍ تحميل المجموعات...</div></div>
+ </div>
+ <div class="chat-panel">
+  <div class="chat-room-title"><h3 id="safinetChatRoomTitle">اختر محادثة</h3><span id="safinetChatRoomState" class="chat-closed"></span></div>
+  <div id="safinetChatMessages" class="chat-messages"><div class="chat-empty">اختر مجموعة أو محادثة لعرض الرسائل.</div></div>
+  <form id="safinetChatForm" class="chat-compose" onsubmit="sendSafinetChatMessage(event)">
+   <textarea id="safinetChatInput" maxlength="2000" placeholder="اكتب رسالتك هنا..." required></textarea>
+   <button id="safinetChatSend" class="action" type="submit">إرسال</button>
+  </form>
+  <div id="safinetChatComposeHint" class="small">الرسائل متاحة لأعضاء المجموعة فقط.</div>
+ </div>
+</section>
+
 <section id="admin" class="screen">
 <div id="adminLogin" class="notice">
 <button class="back" onclick="go('home')">رجوع</button>
@@ -556,6 +601,7 @@ if ("serviceWorker" in navigator) {
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegistrations',renderAdmin)">عرض تسجيلات العملاء والمندوبين</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRegisteredShops',renderRegisteredShops)">المحلات المسجلة</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminOrders',renderOrders)">عرض الطلبات</button>
+<button class="action secondary" type="button" onclick="chatReturnScreen='admin';go('chat')">💬 إدارة الدردشة والمجتمع</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRiderTracking',renderAdminRiderTracking)">تتبع المناديب على الخريطة</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminRiderLedger',renderRiderLedger)">متابعة المندوبين وكشف الحساب وجرد الطلبات</button>
 <button class="action secondary" type="button" onclick="openAdminPage('adminShopVisits',renderShopVisits)">قائمة زيارات المحلات</button>
@@ -844,6 +890,88 @@ async function refreshRiderOpenOrders(){
 }
 async function claimRiderOrder(type,id,button){if(button)button.disabled=true;try{const z=await sbClient.rpc('claim_delivery_order',{p_order_type:type,p_order_id:Number(id)});if(z.error)throw z.error;stopRiderOrderPolling();await loadRiderDashboard();}catch(e){if(button)button.disabled=false;alert('لم يتم قبول الطلب: '+e.message+' ربما حجزه مندوب آخر.');await refreshRiderOpenOrders();}}
 
+
+let chatReturnScreen='home',chatCurrentUserId=null,chatIsAdmin=false,chatCurrentRoom=null,chatRoomsCache=[],chatClient=null,chatRealtimeChannel=null;
+function closeSafinetChat(){const back=chatReturnScreen&&chatReturnScreen!=='chat'?chatReturnScreen:'home';go(back);}
+async function openSafinetChat(){
+ const status=document.getElementById('safinetChatStatus'),roomsBox=document.getElementById('safinetChatRooms');
+ if(status)status.textContent='جارٍ التحقق من حسابك وتحميل المحادثات...';
+ try{
+  if(!initSupabaseAuth())throw new Error('تعذر الاتصال بقاعدة البيانات.');
+  let session=null;
+  if(adminSession&&adminSession.user&&adminSession.user.app_metadata&&adminSession.user.app_metadata.role==='admin'){session=adminSession;chatIsAdmin=true;chatClient=adminClient;}
+  else {const z=await sbClient.auth.getSession();if(z.error)throw z.error;session=z.data.session;chatIsAdmin=false;chatClient=sbClient;}
+  if(!session||!session.user)throw new Error('سجّل الدخول من حسابك أولاً حتى تتمكن من استخدام الدردشة.');
+  chatCurrentUserId=session.user.id;
+  const rooms=await sbRequest('chat_rooms?select=id,room_type,title,is_active,order_source,order_id,created_at&order=created_at.desc');
+  chatRoomsCache=rooms||[];
+  const rank=r=>r.room_type==='order'?0:r.room_type==='announcements'?1:r.room_type==='riders'?2:r.room_type==='shops'?3:4;
+  chatRoomsCache.sort((a,b)=>rank(a)-rank(b)||Number(b.id)-Number(a.id));
+  if(status)status.textContent=chatIsAdmin?'دخول الإدارة: يمكنك متابعة المجموعات وإرسال إعلانات الإدارة.':'أهلاً بك. ستظهر لك المجموعات المسموح بها وحوارات طلباتك فقط.';
+  renderSafinetChatRooms();
+  if(chatRoomsCache.length)await openSafinetChatRoom(Number(chatRoomsCache[0].id));
+  else if(roomsBox)roomsBox.innerHTML='<div class="chat-empty">لا توجد مجموعات متاحة لهذا الحساب حاليًا. تأكد من اعتماد حسابك.</div>';
+ }catch(e){if(status)status.textContent='تعذر فتح الدردشة: '+(e.message||'تحقق من تسجيل الدخول.');if(roomsBox)roomsBox.innerHTML='<div class="chat-empty">تعذر تحميل المجموعات.</div>';}
+}
+function renderSafinetChatRooms(){
+ const box=document.getElementById('safinetChatRooms');if(!box)return;
+ if(!chatRoomsCache.length){box.innerHTML='<div class="chat-empty">لا توجد محادثات متاحة حتى الآن.</div>';return;}
+ box.innerHTML=chatRoomsCache.map(r=>{
+  const label=r.room_type==='order'?'محادثة طلب':r.room_type==='customers'?'مجتمع العملاء':r.room_type==='riders'?'مجتمع المندوبين':r.room_type==='shops'?'مجتمع أصحاب المحلات':'إعلانات الإدارة';
+  const state=r.room_type==='order'?(r.is_active?'محادثة طلبك الجاري':'محادثة مغلقة — الطلب انتهى'):'مجموعة مجتمعية';
+  return '<button type="button" class="chat-room-button '+(chatCurrentRoom&&Number(chatCurrentRoom.id)===Number(r.id)?'active':'')+'" onclick="openSafinetChatRoom('+Number(r.id)+')"><strong>'+escapeText(r.title)+'</strong><small>'+escapeText(label)+' · '+escapeText(state)+'</small></button>';
+ }).join('');
+}
+async function openSafinetChatRoom(roomId){
+ const room=chatRoomsCache.find(r=>Number(r.id)===Number(roomId));if(!room)return;
+ chatCurrentRoom=room;renderSafinetChatRooms();
+ const title=document.getElementById('safinetChatRoomTitle'),state=document.getElementById('safinetChatRoomState'),input=document.getElementById('safinetChatInput'),send=document.getElementById('safinetChatSend'),hint=document.getElementById('safinetChatComposeHint');
+ if(title)title.textContent=room.title;
+ if(state)state.textContent=room.room_type==='order'&&!room.is_active?'المحادثة مغلقة بعد انتهاء الطلب':'';
+ if(input){input.disabled=!room.is_active;input.placeholder=room.is_active?'اكتب رسالتك هنا...':'انتهى الطلب، المحادثة للقراءة فقط.';}
+ if(send)send.disabled=!room.is_active;
+ if(hint)hint.textContent=room.is_active?'تجنب مشاركة كلمات المرور أو البيانات الحساسة.':'يمكنك مراجعة الرسائل السابقة، لكن لا يمكن إرسال رسائل جديدة بعد إغلاق الطلب.';
+ await loadSafinetChatMessages(roomId);
+ if(chatRealtimeChannel&&chatClient){try{await chatClient.removeChannel(chatRealtimeChannel);}catch(e){}chatRealtimeChannel=null;}
+ if(chatClient){
+  chatRealtimeChannel=chatClient.channel('safinet-chat-room-'+roomId)
+   .on('postgres_changes',{event:'*',schema:'public',table:'chat_messages',filter:'room_id=eq.'+roomId},()=>{if(chatCurrentRoom&&Number(chatCurrentRoom.id)===Number(roomId))loadSafinetChatMessages(roomId);})
+   .subscribe();
+ }
+}
+async function loadSafinetChatMessages(roomId){
+ const box=document.getElementById('safinetChatMessages');if(!box)return;
+ try{
+  const rows=await sbRequest('chat_messages?select=id,room_id,sender_user_id,sender_role,body,created_at&room_id=eq.'+Number(roomId)+'&order=created_at.asc&limit=150');
+  if(!rows.length){box.innerHTML='<div class="chat-empty">لا توجد رسائل حتى الآن. ابدأ المحادثة برسالة ترحيب.</div>';return;}
+  const roleName={customer:'عميل',rider:'مندوب',merchant:'صاحب محل',admin:'إدارة سفينة نوح'};
+  box.innerHTML=rows.map(m=>{
+   const mine=m.sender_user_id===chatCurrentUserId;
+   const when=m.created_at?new Date(m.created_at).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'}):'';
+   const remove=chatIsAdmin?'<button type="button" class="chat-delete" onclick="deleteSafinetChatMessage('+Number(m.id)+')">حذف الرسالة</button>':'';
+   return '<div class="chat-message '+(mine?'mine':'')+'"><div class="meta">'+escapeText(roleName[m.sender_role]||'مستخدم')+' · '+escapeText(when)+'</div><div class="body">'+escapeText(m.body)+'</div>'+remove+'</div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+ }catch(e){box.innerHTML='<div class="chat-empty">تعذر تحميل الرسائل: '+escapeText(e.message||'خطأ في الاتصال')+'</div>';}
+}
+async function sendSafinetChatMessage(event){
+ event.preventDefault();
+ const input=document.getElementById('safinetChatInput'),send=document.getElementById('safinetChatSend');
+ if(!chatCurrentRoom||!chatCurrentRoom.is_active||!input||!input.value.trim())return;
+ const body=input.value.trim();if(body.length>2000)return;
+ if(send)send.disabled=true;
+ try{
+  await sbRequest('chat_messages','POST',{room_id:Number(chatCurrentRoom.id),sender_user_id:chatCurrentUserId,sender_role:chatIsAdmin?'admin':'customer',body});
+  input.value='';await loadSafinetChatMessages(chatCurrentRoom.id);
+ }catch(e){const hint=document.getElementById('safinetChatComposeHint');if(hint)hint.textContent='تعذر إرسال الرسالة: '+(e.message||'تحقق من صلاحية الحساب.');}
+ finally{if(send)send.disabled=!chatCurrentRoom||!chatCurrentRoom.is_active;}
+}
+async function deleteSafinetChatMessage(messageId){
+ if(!chatIsAdmin||!confirm('هل تريد حذف هذه الرسالة؟'))return;
+ try{await sbRequest('chat_messages?id=eq.'+Number(messageId),'DELETE');if(chatCurrentRoom)await loadSafinetChatMessages(chatCurrentRoom.id);}
+ catch(e){alert('تعذر حذف الرسالة: '+(e.message||'خطأ في الصلاحيات.'));}
+}
+
 function renderSafinetScreen(id){
  const target=document.getElementById(id);
  if(!target||!target.classList.contains('screen'))return;
@@ -853,6 +981,7 @@ function renderSafinetScreen(id){
  if(id==='merchant'){setTimeout(initMerchantMap,180);startMerchantOrderPolling();}
  if(id==='driver'){setTimeout(loadRiderDashboard,100);}
  if(id==='admin')showAdminAccess();
+ if(id==='chat')openSafinetChat();
  window.scrollTo(0,0);
 }
 function go(id){
@@ -982,7 +1111,7 @@ async function adminLogout(){if(adminClient)await adminClient.auth.signOut();adm
 function getRegistrations(){try{return JSON.parse(localStorage.getItem('safinet_registrations')||'[]')}catch(e){return []}}
 function getSB(){return {url:(localStorage.getItem('safinet_sb_url')||'https://ebvqipxrmozomkdkdwss.supabase.co').replace(/\/$/,''),key:localStorage.getItem('safinet_sb_key')||'sb_publishable_oditw1A8FQKH0AT8gUlWug_-7666wqg'}}
 function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){alert('تأكد من رابط المشروع والمفتاح العام');return}localStorage.setItem('safinet_sb_url',url);localStorage.setItem('safinet_sb_key',key);sbClient=null;adminClient=null;adminSession=null;initSupabaseAuth();document.getElementById('connectionStatus').textContent='تم حفظ الإعدادات على هذا الهاتف.';}
-async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');let token=null;const activeScreen=document.querySelector('.screen.active');if(activeScreen&&activeScreen.id==='admin'&&adminSession&&adminSession.access_token)token=adminSession.access_token;if(!token&&sbClient){const z=await sbClient.auth.getSession();token=z.data&&z.data.session?z.data.session.access_token:null;}if(!token&&adminSession&&adminSession.access_token)token=adminSession.access_token;const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+(token||c.key),'Content-Type':'application/json','Prefer':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
+async function sbRequest(table,method='GET',body=null){const c=getSB();if(!c.url||!c.key)throw new Error('أدخل رابط Supabase والمفتاح العام من قسم الإدارة أولاً.');let token=null;const activeScreen=document.querySelector('.screen.active');if(activeScreen&&activeScreen.id==='admin'&&adminSession&&adminSession.access_token)token=adminSession.access_token;if(activeScreen&&activeScreen.id==='chat'&&chatIsAdmin&&adminSession&&adminSession.access_token)token=adminSession.access_token;if(!token&&sbClient){const z=await sbClient.auth.getSession();token=z.data&&z.data.session?z.data.session.access_token:null;}if(!token&&adminSession&&adminSession.access_token)token=adminSession.access_token;const r=await fetch(c.url+'/rest/v1/'+table,{method,headers:{'apikey':c.key,'Authorization':'Bearer '+(token||c.key),'Content-Type':'application/json','Prefer':'return=representation'},body:body?JSON.stringify(body):undefined});if(!r.ok){let msg='';try{msg=(await r.json()).message||''}catch(e){}throw new Error(msg||'تعذر الاتصال بقاعدة البيانات. راجع إعدادات الجداول وسياسات الوصول.')}return r.status===204?[]:await r.json()}
 async function testSupabase(){const box=document.getElementById('connectionStatus'),c=getSB();box.textContent='جارٍ اختبار اتصال خدمة تسجيل الدخول...';if(!c.url||!c.key){box.textContent='أدخل رابط المشروع والمفتاح العام أولاً.';return}try{const r=await fetch(c.url+'/auth/v1/settings',{headers:{apikey:c.key}});if(!r.ok)throw new Error('رمز الاستجابة '+r.status);box.textContent='اتصال Supabase Auth ناجح. صلاحية عرض بيانات الإدارة تُختبر بعد تسجيل الدخول.'}catch(e){box.textContent='فشل الاتصال: '+(e.message||'تعذر الوصول إلى Supabase Auth')}}
 function toggleRiderVehicleFields(){const v=document.getElementById('riderVehicle').value,licensed=v==='motorcycle'||v==='car';document.getElementById('licensedVehicleFields').style.display=licensed?'block':'none';document.getElementById('vehicleDetailsFields').style.display=licensed?'block':'none';document.getElementById('riderVehicleDetailsLabel').textContent=v==='car'?'ماركة السيارة وموديلها':'نوع الموتوسيكل وموديله';document.getElementById('riderVehicleDetails').placeholder=v==='car'?'مثال: هيونداي فيرنا 2015':'مثال: هوجن 150';document.getElementById('riderVehicleDetails').required=licensed;document.getElementById('riderPlate').required=licensed;document.getElementById('riderDrivingLicense').required=licensed;document.getElementById('riderVehicleLicense').required=licensed;}
 async function uploadRiderDocument(uid,registrationId,key,file){
