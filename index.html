@@ -1036,6 +1036,8 @@ function renderSafinetScreen(id){
  if(id==='driver'){setTimeout(loadRiderDashboard,100);}
  if(id==='admin')showAdminAccess();
  if(id==='chat')openSafinetChat();
+ // إذا سبق للمستخدم السماح بإشعارات Chrome، سجّل/حدّث اشتراك هذا الحساب تلقائياً عند فتح قسمه.
+ if(['customer','merchant','driver'].includes(id))setTimeout(()=>syncSafinetPushForRole(id),350);
  window.scrollTo(0,0);
 }
 function go(id){
@@ -1141,6 +1143,14 @@ async function updateSafinetPushToggle(){
  button.textContent=active?'إيقاف الإشعار':'تفعيل الإشعار';
  button.classList.toggle('enabled',active);
  button.setAttribute('aria-pressed',active?'true':'false');
+}
+async function syncSafinetPushForRole(role){
+ try{
+  if(!['customer','merchant','driver'].includes(role))return;
+  if(!('Notification'in window)||Notification.permission!=='granted')return;
+  await enableSafinetPush(role);
+  await updateSafinetPushToggle();
+ }catch(e){console.warn('Safinet push auto-sync:',e&&e.message?e.message:e);}
 }
 async function enableSafinetPush(role){
  if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw new Error('هذا المتصفح لا يدعم إشعارات الهاتف. افتح التطبيق من Chrome وحدّثه.');
